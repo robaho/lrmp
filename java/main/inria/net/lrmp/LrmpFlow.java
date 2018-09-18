@@ -34,7 +34,6 @@
  */
 package inria.net.lrmp;
 
-import java.util.*;
 import inria.util.Logger;
 
 /**
@@ -64,27 +63,11 @@ final class LrmpFlow implements Runnable {
     private long lastTime = 0;                          /* the rate was measured */
     private Thread thread = null;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param context
-     *
-     * @see
-     */
     LrmpFlow(LrmpContext context) {
         cxt = context;
         lastTime = System.currentTimeMillis();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param pack
-     *
-     * @see
-     */
     public void enqueue(LrmpPacket pack) {
         cxt.sendQueue.enqueue(pack);
 
@@ -93,12 +76,6 @@ final class LrmpFlow implements Runnable {
         } 
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public void flush() {
         cxt.sendQueue.sync();
     }
@@ -133,10 +110,10 @@ final class LrmpFlow implements Runnable {
 
             /* give priority to resend */
 
-            if (cxt.resendQueue.size() > 0) {
+            if (!cxt.resendQueue.isEmpty()) {
                 resend();
             } 
-            if (cxt.sendQueue.getSize() == 0) {
+            if (cxt.sendQueue.isEmpty()) {
                 break;
             } 
 
@@ -192,7 +169,7 @@ final class LrmpFlow implements Runnable {
 
     private void resend() {
         while (true) {
-            LrmpPacket pack = (LrmpPacket) cxt.resendQueue.dequeue();
+            LrmpPacket pack = cxt.resendQueue.dequeue();
 
             if (pack == null) {
                 break;
@@ -206,7 +183,7 @@ final class LrmpFlow implements Runnable {
 
             cxt.lrmp.sendDataPacket(pack, true);
 
-            if (cxt.resendQueue.size() > 0) {
+            if (!cxt.resendQueue.isEmpty()) {
                 flowControl();
 
                 if (cxt.profile.throughput != LrmpProfile.BestEffort 

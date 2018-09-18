@@ -45,21 +45,21 @@
  */
 package inria.util;
 
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+
 /**
  * This class implements the first in first out queue.
  */
-public class FIFOQueue {
-    Object table[];
-    int head = 0;
-    int tail = 0;
-    int count = 0;
+public class FIFOQueue<T> {
+    BlockingQueue<T> queue;
 
     /**
      * Constructs a FIFOQueue instance.
      * @param maxSize the maximum size of the queue.
      */
     public FIFOQueue(int maxSize) {
-        table = new Object[maxSize];
+        queue = new LinkedBlockingQueue(maxSize);
     }
 
     /**
@@ -67,58 +67,28 @@ public class FIFOQueue {
      * queue is full.
      * @param obj the object to be added to the queue.
      */
-    public synchronized void enqueue(Object obj) {
-        while (count >= table.length) {
-            try {
-                wait();
-            } catch (InterruptedException e) {
-                return;
-            }
+    public void enqueue(T obj) {
+        try {
+            queue.put(obj);
+        } catch (InterruptedException e) {
+            Logger.warning("interrupted enqueuing packet");
         }
-
-        table[tail] = obj;
-        tail++;
-
-        if (tail >= table.length) {
-            tail = 0;
-        } 
-
-        count++;
     }
 
     /**
      * Dequeues an object from the queue.
      */
-    public synchronized Object dequeue() {
-        if (count > 0) {
-            Object obj = table[head];
-
-            table[head] = null;     // free the reference
-            head++;
-
-            if (head >= table.length) {
-                head = 0;
-            } 
-
-            count--;
-
-            if (count == (table.length - 1) || count == 0) {
-                notify();
-            } 
-
-            return obj;
-        }
-
-        return null;
+    public T dequeue() {
+        return queue.poll();
     }
 
     /**
      * The calling thread will be blocked until the queue is empty.
      */
-    public synchronized void sync() {
-        while (count > 0) {
+    public void sync() {
+        while (!queue.isEmpty()) {
             try {
-                wait();
+                queue.wait();
             } catch (InterruptedException e) {
                 return;
             }
@@ -128,22 +98,8 @@ public class FIFOQueue {
     /**
      * Returns the number of objects in the queue.
      */
-    public int getSize() {
-        return count;
+    public boolean isEmpty() {
+        return queue.isEmpty();
     }
-
-    /**
-     * Clears the queue.
-     */
-    public synchronized void clear() {
-        for (int i = 0; i < table.length; i++) {
-            table[i] = null;
-        }
-
-        head = 0;
-        tail = 0;
-        count = 0;
-    }
-
 }
 

@@ -199,12 +199,6 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public void flush() {
         cxt.sender.flush();
     }

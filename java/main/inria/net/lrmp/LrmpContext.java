@@ -63,7 +63,7 @@ final class LrmpContext {
     /* output */
 
     protected static final int MaxQueueSize = 16;
-    protected FIFOQueue sendQueue;
+    protected FIFOQueue<LrmpPacket> sendQueue;
     protected LrmpPacketQueue resendQueue;
     protected int senderReportInterval = 4000;
     public int rcvReportSelInterval = 30000;

@@ -34,70 +34,26 @@
  */
 package inria.net.lrmp;
 
-import java.util.*;
 import inria.util.Logger;
+
+import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.Queue;
 
 /**
  * ordered queue of lrmp packets. Sequence number may not be unique for
  * resend queue due to many sources in case of local recovery.
  */
 final class LrmpPacketQueue {
-    static int defalutIncrements = 8;
-    int increments;
-    LrmpPacket table[];
-    int count;
+    private Queue<LrmpPacket> queue = new ArrayDeque<>(34);
 
     /**
      * constructs an LrmpPacketQueue.
      */
-    public LrmpPacketQueue() {
-        this(34, defalutIncrements);
-    }
+    public LrmpPacketQueue(){}
 
-    /**
-     * constructs an LrmpPacketQueue.
-     * @param initialCapacity the initial capacity.
-     * @param increments the increments for expanding the table.
-     */
-    public LrmpPacketQueue(int initialCapacity, int increments) {
-        if (increments <= 0) {
-            this.increments = 2;
-        } else {
-            this.increments = increments;
-        }
-        if (initialCapacity <= 0) {
-            initialCapacity = this.increments;
-        } 
-
-        table = new LrmpPacket[initialCapacity];
-
-        clear();
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    public void clear() {
-        for (int i = 0; i < table.length; i++) {
-            table[i] = null;
-        }
-
-        count = 0;
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
-    public int size() {
-        return count;
+    public boolean isEmpty() {
+        return queue.isEmpty();
     }
 
     /**
@@ -105,89 +61,18 @@ final class LrmpPacketQueue {
      * @param obj the packet to be added.
      */
     public void enqueue(LrmpPacket obj) {
-        count++;
-
-        int size = table.length;
-
-        for (int i = 0; i < size; i++) {
-            if (table[i] == null) {
-                table[i] = obj;
-
-                return;
-            }
-        }
-
-        table = expand(table);
-        table[size] = obj;
+        queue.add(obj);
     }
 
-    /**
-     * contains the packet.
-     * @param seqno the packet seqno.
-     */
-    public boolean contains(long seqno) {
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null && table[i].seqno == seqno) {
-                return true;
-            } 
-        }
-
-        return false;
-    }
-
-    /**
-     * contains the packet.
-     * @param seqno the packet.
-     */
     public boolean contains(LrmpPacket pack) {
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null && table[i] == pack) {
-                return true;
-            } 
-        }
-
-        return false;
+        return queue.contains(pack);
     }
 
     /**
      * gets the packet.
      */
     public LrmpPacket dequeue() {
-        int found = -1;
-
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null) {
-                if (found < 0 || table[i].seqno < table[found].seqno) {
-                    found = i;
-                } 
-            }
-        }
-
-        if (found >= 0) {
-            LrmpPacket pack = table[found];
-
-            table[found] = null;
-            count--;
-
-            return pack;
-        }
-
-        return null;
-    }
-
-    /**
-     * remove the given packet from the queue.
-     * @param obj the packet to be removed.
-     */
-    public void remove(LrmpPacket obj) {
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null && obj == table[i]) {
-                table[i] = null;
-                count--;
-
-                return;
-            }
-        }
+        return queue.poll();
     }
 
     /**
@@ -195,70 +80,29 @@ final class LrmpPacketQueue {
      * @param seqno the packet seqno.
      */
     public void remove(LrmpSender s, long seqno, int scope) {
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null) {
-                if (s == table[i].source && seqno == table[i].seqno 
-                        && scope >= table[i].scope) {
-                    table[i] = null;
-                    count--;
-
-                    if (Logger.debug()) {
-                        Logger.debug(this, 
-                                     "cancel resend " + seqno + " " + count);
-                    } 
-
-                    return;
-                }
+        Iterator<LrmpPacket> i = queue.iterator();
+        while(i.hasNext()) {
+            LrmpPacket p = i.next();
+            if (s == p.sender && seqno == p.seqno && scope == p.scope) {
+                i.remove();
+                break;
             }
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     * @param id
-     * @param scope
-     *
-     * @see
-     */
     public void cancel(LrmpSender s, int id, int scope) {
-        for (int i = 0; i < table.length; i++) {
-            if (table[i] != null) {
-                if (s == table[i].source && id == table[i].retransmitID 
-                        && scope >= table[i].scope) {
-                    if (Logger.debug()) {
-                        Logger.debug(this, 
-                                     "cancel resend " + table[i].seqno + " " 
-                                     + count);
-                    } 
-
-                    table[i] = null;
-                    count--;
+        Iterator<LrmpPacket> i = queue.iterator();
+        while(i.hasNext()) {
+            LrmpPacket p = i.next();
+            if (s == p.sender && id == p.retransmitID && scope == p.scope) {
+                i.remove();
+                if (Logger.debug()) {
+                    Logger.debug(this,
+                            "cancel resend " + p.seqno + " " + queue.size());
                 }
+                break;
             }
         }
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param tab
-     *
-     * @return
-     *
-     * @see
-     */
-    protected LrmpPacket[] expand(LrmpPacket[] tab) {
-        LrmpPacket[] newtab = new LrmpPacket[tab.length + increments];
-
-        for (int i = 0; i < tab.length; i++) {
-            newtab[i] = tab[i];
-        }
-
-        return newtab;
     }
 
 }
