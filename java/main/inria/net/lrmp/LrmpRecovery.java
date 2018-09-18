@@ -46,7 +46,7 @@ final class LrmpRecovery implements EventHandler {
     protected LrmpDomain domain;
     protected LrmpContext cxt;
     protected LrmpPacket dummy = null;
-    protected Object event = null;
+    protected EventManager.Event event = null;
     protected Random rand;
 
     /*

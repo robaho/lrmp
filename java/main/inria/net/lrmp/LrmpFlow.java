@@ -111,6 +111,7 @@ final class LrmpFlow implements Runnable {
      */
     private synchronized void start() {
         if (thread == null) {
+            Logger.debug("creating new thread");
             thread = new Thread(this);
 
             thread.setName(getClass().getName());
@@ -119,12 +120,6 @@ final class LrmpFlow implements Runnable {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public void stop() {
 
         /*
@@ -133,12 +128,6 @@ final class LrmpFlow implements Runnable {
         thread = null;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public synchronized void run() {
         while (thread != null) {
 
@@ -201,12 +190,6 @@ final class LrmpFlow implements Runnable {
         cxt.lrmp.idle();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     private void resend() {
         while (true) {
             LrmpPacket pack = (LrmpPacket) cxt.resendQueue.dequeue();
@@ -242,13 +225,6 @@ final class LrmpFlow implements Runnable {
 
     /*
      * rate adaptation, how much time to wait, etc.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
      */
     private void flowControl() {
         int pcount = cxt.whoami.packets - lastPackets;
@@ -304,45 +280,6 @@ final class LrmpFlow implements Runnable {
         } 
     }
 
-    /*
-     * Adjust data transmission rate. What we do is to measure the effective
-     * rate which is the rate at which we send minus loss rate. Rate is
-     * adpated to loss.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    private void updateRate() {}
-
-    /*
-     * Clear windows.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    public void reset() {
-        cxt.sendQueue.clear();
-        cxt.resendQueue.clear();
-        cxt.whoami.clearCache(cxt.whoami.expected());
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param pack
-     * @param scope
-     *
-     * @see
-     */
     public void enqueueResend(LrmpPacket pack, int scope) {
         if (cxt.resendQueue.contains(pack)) {
             if (pack.scope < scope) {
@@ -361,30 +298,10 @@ final class LrmpFlow implements Runnable {
         } 
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     * @param seqno
-     * @param scope
-     *
-     * @see
-     */
     public void cancelResend(LrmpSender s, long seqno, int scope) {
         cxt.resendQueue.remove(s, seqno, scope);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     * @param id
-     * @param scope
-     *
-     * @see
-     */
     public void cancelResend(LrmpSender s, int id, int scope) {
         cxt.resendQueue.cancel(s, id, scope);
     }

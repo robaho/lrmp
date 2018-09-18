@@ -121,21 +121,19 @@ abstract public class MulticastSession implements Runnable {
      * @param port the port to use.
      * @exception IOException is raised if there is an error in creating socket.
      */
-    protected void initialize(InetAddress addr, int port) throws IOException {
+    protected void initialize(InetAddress addr, int port, String networkInterface) throws IOException {
         inetAddr = addr;
 
         if (isMulticast(inetAddr)) {
             sock_in = new MulticastSocket(port);
-
-//            ((MulticastSocket) sock_in).setInterface(InetAddress.getByName("localhost"));
-            ((MulticastSocket) sock_in).setNetworkInterface(NetworkInterface.getByName("lo0"));
+            if (networkInterface!=null) {
+                ((MulticastSocket) sock_in).setNetworkInterface(NetworkInterface.getByName(networkInterface));
+            }
             ((MulticastSocket) sock_in).joinGroup(inetAddr);
-//            ((MulticastSocket) sock_in).setLoopbackMode(false);
-
             sock_out = new MulticastSocket();
-//            ((MulticastSocket) sock_out).setLoopbackMode(false);
-//            ((MulticastSocket) sock_out).setInterface(InetAddress.getByName("localhost"));
-            ((MulticastSocket) sock_out).setNetworkInterface(NetworkInterface.getByName("lo0"));
+            if (networkInterface!=null) {
+                ((MulticastSocket) sock_in).setNetworkInterface(NetworkInterface.getByName(networkInterface));
+            }
         } else {
             sock_in = new DatagramSocket(port);
             sock_out = new DatagramSocket();

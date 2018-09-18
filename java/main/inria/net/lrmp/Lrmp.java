@@ -138,66 +138,25 @@ public class Lrmp {
     private LrmpImpl impl;
 
     /**
-     * creates and joins an LRMP multicast session. The session will be carried on
-     * the specified group address and the transport port.
-     * @param addr the destination address.
+     * creates and joins an LRMP session.
+     * @param addr the destination address. if this is not a multicast address, a unicast session is created
      * @param port the port to use.
      * @param ttl the time-to-live value.
-     * @param prof the profile to use.
-     * @exception LrmpException is raised if there is an error in joining or
-     * bad profile.
-     */
-    public Lrmp(InetAddress addr, int port, int ttl, 
-                LrmpProfile prof) throws LrmpException {
-        impl = new LrmpImpl(addr, port, ttl, prof);
-    }
-
-    /**
-     * creates and joins an LRMP unicast session.
-     * @param addr the destination address.
-     * @param port the port to use.
-     * @param prof profile to use.
-     * @exception LrmpException is raised if there is an error in creating socket or
-     * bad profile.
-     */
-    public Lrmp(InetAddress addr, int port, 
-                LrmpProfile prof) throws LrmpException {
-        this(addr, port, 0, prof);
-    }
-
-    /**
-     * creates and joins an LRMP multicast session.
-     * @param group the destination address.
-     * @param port the port to use.
-     * @param ttl the time-to-live value.
+     * @param networkInterface the network interface to use for multicast, or null
      * @param prof profile to use.
      * @exception LrmpException is raised if there is an error in joining or
      * bad profile.
      */
-    public Lrmp(String group, int port, int ttl, 
-                LrmpProfile prof) throws LrmpException {
+    public Lrmp(String addr, int port, int ttl, String networkInterface, LrmpProfile prof) throws LrmpException {
         InetAddress iaddr;
 
         try {
-            iaddr = InetAddress.getByName(group);
+            iaddr = InetAddress.getByName(addr);
         } catch (UnknownHostException e) {
             throw new LrmpException(e.toString());
         }
 
-        impl = new LrmpImpl(iaddr, port, ttl, prof);
-    }
-
-    /**
-     * creates and joins an LRMP unicast session.
-     * @param addr the destination address.
-     * @param port the port to use.
-     * @param prof profile to use.
-     * @exception LrmpException is raised if there is an error in creating socket or
-     * bad profile.
-     */
-    public Lrmp(String addr, int port, 
-                LrmpProfile prof) throws LrmpException {
-        this(addr, port, 0, prof);
+        impl = new LrmpImpl(iaddr, port, ttl, networkInterface, prof);
     }
 
     /**

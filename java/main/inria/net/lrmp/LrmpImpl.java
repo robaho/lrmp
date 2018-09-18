@@ -66,7 +66,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
     public static final int RR_PT = 21;
     protected static final int checkInterval = 10000;
     protected LrmpContext cxt;
-    private Object event = null;
+    private EventManager.Event event = null;
     private Vector reports;
     int lastDataBytes = 0;
     int lastCtrlBytes = 0;
@@ -76,35 +76,20 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
     Random rand;
 
     /**
-     * creates an LRMP multicast session with the specified group, port and TTL.
+     * creates an LRMP session
      * @param addr the destination address.
      * @param port the port to use.
-     * @param ttl the time to live value.
-     * @param prof the profile to use.
-     * @exception LrmpException is raised if there is an error in joining or
-     * bad profile.
-     */
-    public LrmpImpl(InetAddress addr, int port, int ttl, 
-                    LrmpProfile prof) throws LrmpException {
-        this(addr, port, prof);
-
-        setTTL(ttl);
-    }
-
-    /**
-     * creates an LRMP unicast session with the specified address and port.
-     * @param addr the destination address.
-     * @param port the port to use.
+     * @param networkInterface the network interface or null
+     * @param ttl the time to live, only used for multicast sessions
      * @param prof the profile to use.
      * @exception LrmpException is raised if there is an error in creating socket or
      * bad profile.
      */
-    public LrmpImpl(InetAddress addr, int port, 
-                    LrmpProfile prof) throws LrmpException {
+    public LrmpImpl(InetAddress addr, int port, int ttl, String networkInterface, LrmpProfile prof) throws LrmpException {
         super();
 
         try {
-            initialize(addr, port);
+            initialize(addr, port, networkInterface);
         } catch (IOException e) {
             throw new LrmpException(e.toString());
         }
@@ -122,6 +107,11 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         lastUpdateTime = System.currentTimeMillis();
         rand = new Random();
+
+        if (sock_in instanceof MulticastSocket){
+            setTTL(ttl);
+        }
+
     }
 
     /**
@@ -153,42 +143,16 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      */
     public void startSession() {
 
-        /* setup timer manager */
+        LrmpContext.timer=EventManager.shared();
 
-        if (cxt.timer == null) {
-            initTimer();
-        }
         if (cxt.recover == null) {
             initRecover();
         } 
-
-        /* start to run */
 
         start();
         startTimer(checkInterval);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    private synchronized static void initTimer() {
-        LrmpContext.timer = EventManager.shared();
-
-        if (!LrmpContext.timer.isAlive()) {
-            LrmpContext.timer.setDaemon(true);
-            LrmpContext.timer.start();
-        }
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     private void initRecover() {
         if (cxt.recover != null) {
             cxt.recover.stop();

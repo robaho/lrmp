@@ -34,8 +34,6 @@
  */
 package inria.net.lrmp;
 
-import java.net.InetAddress;
-import java.util.*;
 import inria.util.*;
 
 /**

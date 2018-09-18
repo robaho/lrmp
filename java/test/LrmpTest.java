@@ -22,7 +22,7 @@ public class LrmpTest {
                 System.out.println("got an event "+data);
             }
         });
-        Lrmp lrmp = new Lrmp("225.0.0.100",6000,0,profile);
+        Lrmp lrmp = new Lrmp("225.0.0.100",6000,0,"en0",profile);
         lrmp.start();
 
         Reader r = new BufferedReader(new InputStreamReader(System.in));
@@ -34,7 +34,9 @@ public class LrmpTest {
             System.arraycopy(bytes,0,p.getDataBuffer(),0,bytes.length);
             p.setDataLength(bytes.length);
             System.out.println("sending packet");
-            lrmp.send(p);
+            for(int i =0;i<100;i++){
+                lrmp.send(p);
+            }
         }
     }
 }
