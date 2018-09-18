@@ -38,7 +38,7 @@ import java.util.*;
 import inria.util.*;
 
 /**
- * a hierarchical doamin for error recovery. A domain is scoped by a ttl value
+ * a hierarchical domain for error recovery. A domain is scoped by a ttl value
  * which is the radius of reachable distance.
  */
 final class LrmpRecovery implements EventHandler {
@@ -49,15 +49,6 @@ final class LrmpRecovery implements EventHandler {
     protected EventManager.Event event = null;
     protected Random rand;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param ttl
-     * @param context
-     *
-     * @see
-     */
     public LrmpRecovery(int ttl, LrmpContext context) {
         this.cxt = context;
         domain = new LrmpDomain(ttl);
@@ -207,30 +198,8 @@ final class LrmpRecovery implements EventHandler {
      * only one event for a given source and a reporter is maintained
      * in all domains.
      */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     * @param reporter
-     *
-     * @return
-     *
-     * @see
-     */
     protected LrmpLossEvent lookup(LrmpSender s, LrmpEntity reporter) {
-        LrmpLossEvent[] tab = domain.lossTab.tab;
-
-        for (int i = tab.length - 1; i >= 0; i--) {
-            if (tab[i] != null) {
-                if (tab[i].source == s && tab[i].reporter == reporter) {
-                    return tab[i];
-                } 
-            }
-        }
-
-        return null;
+        return domain.lossTab.lookup(s,reporter);
     }
 
     /*
@@ -245,15 +214,6 @@ final class LrmpRecovery implements EventHandler {
      * than the resend timer and the time in which the source may send repairs. So
      * a transmission interval must be added. The initial mrtt is used as the lower
      * bound since responders may use it to schedule the resend.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
      */
     private void nackTimer(LrmpLossEvent ev) {
         int d = (ev.domain.stats.mrtt << ev.nackCount) >> 3;
@@ -291,15 +251,6 @@ final class LrmpRecovery implements EventHandler {
     /*
      * determine the timer value for sending repairs.
      */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
-     */
     private void resendTimer(LrmpLossEvent ev) {
         int d = ev.domain.stats.mrtt >> 3;
 
@@ -330,15 +281,8 @@ final class LrmpRecovery implements EventHandler {
      */
     private synchronized void startTimer() {
         long future = 0x7fffffffffffffffL;
-        LrmpLossEvent[] tab = domain.lossTab.tab;
 
-        for (int i = tab.length - 1; i >= 0; i--) {
-            if (tab[i] == null) {
-                continue;
-            } 
-
-            LrmpLossEvent ev = tab[i];
-
+        for (LrmpLossEvent ev : domain.lossTab) {
             if (ev.timeoutTime < future) {
                 future = ev.timeoutTime;
             } 
@@ -369,15 +313,6 @@ final class LrmpRecovery implements EventHandler {
      * the timer has expired, send NACK or repair in need.
      */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param data
-     * @param now
-     *
-     * @see
-     */
     public void handleTimerEvent(Object data, long now) {
         event = null;
 
@@ -385,17 +320,10 @@ final class LrmpRecovery implements EventHandler {
             Logger.debug(this, "handle timeout: " + domain.lossTab.size());
         } 
 
-        /*
-         * check which event is timeout in the loss event queue.
-         */
-        LrmpLossEvent[] tab = domain.lossTab.tab;
+        Iterator<LrmpLossEvent> itr = domain.lossTab.iterator();
+        LrmpLossEvent ev;
 
-        for (int i = tab.length - 1; i >= 0; i--) {
-            if (tab[i] == null) {
-                continue;
-            } 
-
-            LrmpLossEvent ev = tab[i];
+        for (;itr.hasNext() && (ev = itr.next())!=null;) {
 
             if (ev.timeoutTime > now) {
                 continue;
@@ -415,7 +343,7 @@ final class LrmpRecovery implements EventHandler {
              * process loss events occurred at local site,
              * check if need to send NACK.
              */
-            LrmpSender s = (LrmpSender) ev.source;
+            LrmpSender s = ev.source;
 
             /* update loss event */
 
@@ -432,19 +360,19 @@ final class LrmpRecovery implements EventHandler {
                     Logger.debug(this, "Bravo!");
                 } 
 
-                domain.lossTab.remove(ev);
+                itr.remove();
 
                 continue;
             } else if (s.lost) {
                 cxt.lrmp.handleSyncError(ev.source, 
                                          LrmpErrorEvent.SenderGone);
-                domain.lossTab.remove(ev);
+                itr.remove();
 
                 continue;
             } else if (ev.nackCount >= MaxTries) {
                 cxt.lrmp.handleSyncError(ev.source, 
                                          LrmpErrorEvent.MaxTriesReached);
-                domain.lossTab.remove(ev);
+                itr.remove();
 
                 continue;
             }

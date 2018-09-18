@@ -34,149 +34,49 @@
  */
 package inria.net.lrmp;
 
-import java.util.*;
 
-// import inria.util.*;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * table of loss packets.
  */
-final class LrmpLossTable {
-    protected LrmpLossEvent[] tab;
-    protected LrmpPacket packet = null;
+final class LrmpLossTable implements Iterable<LrmpLossEvent>{
+    private List<LrmpLossEvent> table;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param initialSize
-     *
-     * @see
-     */
     public LrmpLossTable(int initialSize) {
-        tab = new LrmpLossEvent[initialSize];
-
-        clear();
+        table = new LinkedList();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public void clear() {
-        for (int i = 0; i < tab.length; i++) {
-            tab[i] = null;      /* mark free */
-        }
+        table.clear();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public int size() {
-        int count = 0;
-
-        for (int i = 0; i < tab.length; i++) {
-            if (tab[i] != null) {
-                count++;
-            } 
-        }
-
-        return count;
+        return table.size();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
-     */
     public void add(LrmpLossEvent ev) {
-        int i = 0;
-
-        for (; i < tab.length; i++) {
-            if (tab[i] == null) {
-                tab[i] = ev;
-
-                return;
-            }
-        }
-
-        tab = expand(tab);
-        tab[i] = ev;
+        table.add(ev);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
-     */
     public void remove(LrmpLossEvent ev) {
-        for (int i = 0; i < tab.length; i++) {
-            if (tab[i] == ev) {
-                tab[i] = null;
+        table.remove(ev);
+    }
 
-                break;
+    public LrmpLossEvent lookup(LrmpSender s, LrmpEntity reporter) {
+        for (LrmpLossEvent e : table){
+            if (e.source==s && e.reporter==reporter) {
+                return e;
             }
         }
+        return null;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @return
-     *
-     * @see
-     */
-    public boolean contains(LrmpLossEvent ev) {
-        for (int i = 0; i < tab.length; i++) {
-            if (tab[i] == ev) {
-                return true;
-            } 
-        }
-
-        return false;
+    @Override
+    public Iterator<LrmpLossEvent> iterator() {
+        return table.iterator();
     }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param tab
-     *
-     * @return
-     *
-     * @see
-     */
-    private static final LrmpLossEvent[] expand(LrmpLossEvent[] tab) {
-        LrmpLossEvent[] newtab;
-
-        if (tab != null) {
-            newtab = new LrmpLossEvent[tab.length + 4];
-
-            for (int i = 0; i < tab.length; i++) {
-                newtab[i] = tab[i];
-            }
-        } else {
-            newtab = new LrmpLossEvent[4];
-        }
-
-        return newtab;
-    }
-
 }
 

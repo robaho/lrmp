@@ -69,25 +69,11 @@ final class LrmpContext {
     public int rcvReportSelInterval = 30000;
     protected static EventManager timer = null;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @see
-     */
     protected LrmpContext() {
         sendQueue = new FIFOQueue(MaxQueueSize);
         resendQueue = new LrmpPacketQueue();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param prof
-     *
-     * @see
-     */
     protected void setProfile(LrmpProfile prof) {
 
         /* keep a cloned profile to prevent change by upper layer */

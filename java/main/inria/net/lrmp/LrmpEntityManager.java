@@ -188,8 +188,7 @@ final class LrmpEntityManager {
 
             if (s != whoami &&!(s instanceof LrmpSender)) {
                 if (s.getAddress().equals(netaddr)) {
-                    long silence = System.currentTimeMillis() 
-                                   - s.getLastTimeHeard();
+                    long silence = System.currentTimeMillis() - s.getLastTimeHeard();
 
                     if (silence >= rcvDropTime) {
                         remove(s);

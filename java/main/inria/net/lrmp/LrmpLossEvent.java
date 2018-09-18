@@ -34,10 +34,6 @@
  */
 package inria.net.lrmp;
 
-import java.util.*;
-
-// import inria.util.*;
-
 /**
  * data related to packet loss events.
  */
@@ -59,14 +55,6 @@ final class LrmpLossEvent implements Cloneable {
     public int nextAction = SendNack;
     public LrmpDomain domain;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param s
-     *
-     * @see
-     */
     public LrmpLossEvent(LrmpSender s) {
         source = s;
     }
@@ -75,13 +63,6 @@ final class LrmpLossEvent implements Cloneable {
      * set the first seqno lost and succeeding lost in the bitmask.
      * In bitmask, 1 means lost.
      * If no loss exists, the low field is set -1.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
      */
     public void computeBitmask() {
         low = source.expected();
@@ -110,16 +91,6 @@ final class LrmpLossEvent implements Cloneable {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @return
-     *
-     * @see
-     */
     public boolean equals(LrmpLossEvent ev) {
         if (ev.source == source && ev.low == low && ev.bitmask == bitmask) {
             return true;
@@ -131,17 +102,6 @@ final class LrmpLossEvent implements Cloneable {
     /*
      * returns true if the lost packets reported by this event contains
      * that of the given event.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @return
-     *
-     * @see
      */
     public boolean contains(LrmpLossEvent ev) {
         int diff = LrmpImpl.diff32(ev.low, low);
@@ -166,14 +126,6 @@ final class LrmpLossEvent implements Cloneable {
      * this event.
      */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
-     */
     public void remove(LrmpLossEvent ev) {
         int diff = LrmpImpl.diff32(ev.low, low);
 
@@ -218,27 +170,11 @@ final class LrmpLossEvent implements Cloneable {
 
     /* debug */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public String toString() {
         return reporter + "->" + source + ":" + low + "/" 
                + Integer.toHexString(bitmask) + "@" + scope;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public Object clone() {
         try {
             return super.clone();

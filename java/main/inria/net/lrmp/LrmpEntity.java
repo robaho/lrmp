@@ -46,7 +46,6 @@ public class LrmpEntity extends Entity {
     private InetAddress ipAddr;     /* IP address */
     private long lastTimeHeard;
     private int nack;
-    private int repair;
 
     /**
      * round trip time in millis.
@@ -69,27 +68,12 @@ public class LrmpEntity extends Entity {
         reset();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void reset() {
         nack = 0;
-        repair = 0;
         lastTimeHeard = 0;
         distance = 255;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param netaddr
-     *
-     * @see
-     */
     protected void setAddress(InetAddress netaddr) {
         ipAddr = netaddr;
     }
@@ -129,12 +113,6 @@ public class LrmpEntity extends Entity {
         return rtt;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incNack() {
         nack++;
     }
@@ -156,15 +134,6 @@ public class LrmpEntity extends Entity {
 
     /*
      * Sets the last time when this entity was heard.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param t
-     *
-     * @see
      */
     protected void setLastTimeHeard(long t) {
         lastTimeHeard = t;

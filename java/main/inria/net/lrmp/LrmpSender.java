@@ -87,30 +87,12 @@ public final class LrmpSender extends LrmpEntity {
     protected int transit;                  /* transit time */
     protected int jitter;                   /* interarrival jitter */
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param id
-     * @param netaddr
-     * @param start
-     *
-     * @see
-     */
     protected LrmpSender(int id, InetAddress netaddr, long start) {
         super(id, netaddr);
 
         reset(start);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param initialSeqno
-     *
-     * @see
-     */
     protected void reset(long initialSeqno) {
         super.reset();
 
@@ -135,14 +117,6 @@ public final class LrmpSender extends LrmpEntity {
         clearCache(initialSeqno);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param cacheSize
-     *
-     * @see
-     */
     protected void initCache(int cacheSize) {
         cache = new LrmpPacketCache(cacheSize);
         this.cacheSize = cache.getMaxSize();

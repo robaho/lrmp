@@ -1,17 +1,17 @@
 /*
  * COPYRIGHT 1995 BY: MASSACHUSETTS INSTITUTE OF TECHNOLOGY (MIT), INRIA
- * 
+ *
  * This W3C software is being provided by the copyright holders under the
  * following license. By obtaining, using and/or copying this software, you
  * agree that you have read, understood, and will comply with the following
  * terms and conditions:
- * 
+ *
  * Permission to use, copy, modify, and distribute this software and its
  * documentation for any purpose and without fee or royalty is hereby granted,
  * provided that the full text of this NOTICE appears on ALL copies of the
  * software and documentation or portions thereof, including modifications,
  * that you make.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED "AS IS," AND COPYRIGHT HOLDERS MAKE NO
  * REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED. BY WAY OF EXAMPLE, BUT
  * NOT LIMITATION, COPYRIGHT HOLDERS MAKE NO REPRESENTATIONS OR WARRANTIES OF
@@ -19,7 +19,7 @@
  * SOFTWARE OR DOCUMENTATION WILL NOT INFRINGE ANY THIRD PARTY PATENTS,
  * COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS. COPYRIGHT HOLDERS WILL BEAR NO
  * LIABILITY FOR ANY USE OF THIS SOFTWARE OR DOCUMENTATION.
- * 
+ *
  * The name and trademarks of copyright holders may NOT be used in advertising
  * or publicity pertaining to the software without specific, written prior
  * permission. Title to copyright in this software and any associated
@@ -37,6 +37,7 @@ package inria.net.lrmp;
 import java.net.*;
 import java.io.*;
 import java.util.*;
+
 import inria.net.MulticastSession;
 import inria.util.EventHandler;
 import inria.util.EventManager;
@@ -77,13 +78,14 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /**
      * creates an LRMP session
-     * @param addr the destination address.
-     * @param port the port to use.
+     *
+     * @param addr             the destination address.
+     * @param port             the port to use.
      * @param networkInterface the network interface or null
-     * @param ttl the time to live, only used for multicast sessions
-     * @param prof the profile to use.
-     * @exception LrmpException is raised if there is an error in creating socket or
-     * bad profile.
+     * @param ttl              the time to live, only used for multicast sessions
+     * @param prof             the profile to use.
+     * @throws LrmpException is raised if there is an error in creating socket or
+     *                       bad profile.
      */
     public LrmpImpl(InetAddress addr, int port, int ttl, String networkInterface, LrmpProfile prof) throws LrmpException {
         super();
@@ -108,7 +110,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         lastUpdateTime = System.currentTimeMillis();
         rand = new Random();
 
-        if (sock_in instanceof MulticastSocket){
+        if (sock_in instanceof MulticastSocket) {
             setTTL(ttl);
         }
 
@@ -116,8 +118,9 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /**
      * sets the profile.
+     *
      * @param prof profile to use.
-     * @exception LrmpException is raised if this is a bad profile.
+     * @throws LrmpException is raised if this is a bad profile.
      */
     public void setProfile(LrmpProfile prof) throws LrmpException {
         cxt.setProfile(prof);
@@ -125,8 +128,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @return
      *
      * @see
@@ -137,17 +140,17 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @see
      */
     public void startSession() {
 
-        LrmpContext.timer=EventManager.shared();
+        LrmpContext.timer = EventManager.shared();
 
         if (cxt.recover == null) {
             initRecover();
-        } 
+        }
 
         start();
         startTimer(checkInterval);
@@ -156,7 +159,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
     private void initRecover() {
         if (cxt.recover != null) {
             cxt.recover.stop();
-        } 
+        }
 
         cxt.recover = new LrmpRecovery(ttl, cxt);
     }
@@ -178,6 +181,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /**
      * sends a data packet to the session.
+     *
      * @param pack the packet to send.
      */
     public void send(LrmpPacket pack) {
@@ -192,8 +196,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         if (idleTime > 0) {
             idleTime = 0;
-            cxt.whoami.nextSRTime = System.currentTimeMillis() 
-                                    + cxt.senderReportInterval;
+            cxt.whoami.nextSRTime = System.currentTimeMillis()
+                    + cxt.senderReportInterval;
 
             startTimer(cxt.senderReportInterval);
         }
@@ -205,9 +209,10 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /**
      * parses a received data/control packet.
-     * @param buff the data buffer.
+     *
+     * @param buff     the data buffer.
      * @param totalLen the total length of data in the buffer.
-     * @param netaddr the sender network address.
+     * @param netaddr  the sender network address.
      * @retrun true if the buffer can be reused; false otherwise.
      */
     protected boolean parse(byte buff[], int totalLen, InetAddress netaddr) {
@@ -219,10 +224,10 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             cxt.stats.badLength++;
 
             if (Logger.debug()) {
-                Logger.debug(this, 
-                             "packet too short (" + totalLen + ") " 
-                             + netaddr.getHostAddress());
-            } 
+                Logger.debug(this,
+                        "packet too short (" + totalLen + ") "
+                                + netaddr.getHostAddress());
+            }
 
             return true;
         }
@@ -233,10 +238,10 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             cxt.stats.badVersion++;
 
             if (Logger.debug()) {
-                Logger.debug(this, 
-                             "incorrect version (" + k + ") " 
-                             + netaddr.getHostAddress());
-            } 
+                Logger.debug(this,
+                        "incorrect version (" + k + ") "
+                                + netaddr.getHostAddress());
+            }
 
             return true;
         }
@@ -247,10 +252,9 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         /* ignore loopback packets */
 
-        if (cxt.whoami.getID() == k 
-                && cxt.whoami.getAddress().equals(netaddr)) {
+        if (cxt.whoami.getID() == k && cxt.whoami.getAddress().equals(netaddr)) {
             return true;
-        } 
+        }
 
         LrmpEntity s = cxt.sm.lookup(k, netaddr);
 
@@ -259,9 +263,9 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             /*
              * refused...
              */
-            Logger.error(this, 
-                         "rejected packet from " + Integer.toHexString(k) 
-                         + "@" + netaddr.getHostAddress());
+            Logger.error(this,
+                    "rejected packet from " + Integer.toHexString(k)
+                            + "@" + netaddr.getHostAddress());
 
             return true;
         }
@@ -272,7 +276,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         if (s.distance > k) {
             s.distance = k;
-        } 
+        }
 
         /*
          * loop to process all multiplexed packets.
@@ -281,8 +285,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         boolean reuse = true;
 
         while (offset < totalLen) {
-            int len = ((buff[offset + 2] & 0xff) << 8) 
-                      | (buff[offset + 3] & 0xff);
+            int len = ((buff[offset + 2] & 0xff) << 8)
+                    | (buff[offset + 3] & 0xff);
 
             if (len < 12 || (len + offset) > totalLen) {
                 cxt.stats.badLength++;
@@ -302,35 +306,35 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                 switch (k) {
 
-                case NACK_PT: 
-                    processNack(s, buff, offset, len);
+                    case NACK_PT:
+                        processNack(s, buff, offset, len);
 
-                    break;
+                        break;
 
-                case R_NACK_PT: 
-                    processNackReply(s, buff, offset, len);
+                    case R_NACK_PT:
+                        processNackReply(s, buff, offset, len);
 
-                    break;
+                        break;
 
-                case SR_PT: 
-                    processSenderReport(s, buff, offset, len);
+                    case SR_PT:
+                        processSenderReport(s, buff, offset, len);
 
-                    break;
+                        break;
 
-                case RS_PT: 
-                    processRRSelection(s, buff, offset, len);
+                    case RS_PT:
+                        processRRSelection(s, buff, offset, len);
 
-                    break;
+                        break;
 
-                case RR_PT: 
-                    processReceiverReport(s, buff, offset, len);
+                    case RR_PT:
+                        processReceiverReport(s, buff, offset, len);
 
-                    break;
+                        break;
 
-                default: 
-                    Logger.error(this, "bad control pt " + k);
+                    default:
+                        Logger.error(this, "bad control pt " + k);
 
-                    break;
+                        break;
                 }
             } else {
                 cxt.stats.dataPackets++;
@@ -361,8 +365,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param s
      * @param buff
      * @param offset
@@ -387,9 +391,9 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             int k = Utilities.byteToInt(buff, offset);
             LrmpEntity e = cxt.sm.get(k);
 
-            if (e == null ||!(e instanceof LrmpSender)) {
+            if (e == null || !(e instanceof LrmpSender)) {
                 continue;
-            } 
+            }
 
             offset += 4;
 
@@ -406,7 +410,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
             if (Logger.debug()) {
                 Logger.debug(this, "got NACK " + ev + " @" + ev.rcvSendTime);
-            } 
+            }
 
             cxt.recover.processNack(ev);
 
@@ -436,8 +440,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param s
      * @param buff
      * @param offset
@@ -445,7 +449,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processNackReply(LrmpEntity s, byte[] buff, int offset, 
+    private void processNackReply(LrmpEntity s, byte[] buff, int offset,
                                   int len) {
         int scope = buff[offset + 1];
 
@@ -468,7 +472,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             int dataSrc = Utilities.byteToInt(buff, offset);
             LrmpEntity e = cxt.sm.get(dataSrc);
 
-            if (e == null ||!(e instanceof LrmpSender)) {
+            if (e == null || !(e instanceof LrmpSender)) {
                 offset += 12;
 
                 continue;
@@ -499,13 +503,13 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         if (len > 0) {
             cxt.stats.badLength++;
-        } 
+        }
     }
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param e
      * @param buff
      * @param offset
@@ -513,7 +517,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processSenderReport(LrmpEntity e, byte[] buff, int offset, 
+    private void processSenderReport(LrmpEntity e, byte[] buff, int offset,
                                      int len) {
         offset += 8;
 
@@ -548,7 +552,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         if (diff32(seqno, s.expected()) > 0) {
             if (diff32(seqno, s.maxseq) > 1) {
                 s.maxseq = seqno - 1;
-            } 
+            }
 
             cxt.recover.handleLoss(s);
         }
@@ -565,7 +569,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                 if (diff > 0) {
                     s.setRate(diff * 1000 / interval);
-                } 
+                }
 
                 diff = packets - s.srPackets;
 
@@ -580,10 +584,10 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             }
         }
         if (Logger.debug()) {
-            Logger.debug(this, 
-                         "got SR " + e + " cur/next:" + seqno + "/" 
-                         + s.expected + " rate:" + s.rate);
-        } 
+            Logger.debug(this,
+                    "got SR " + e + " cur/next:" + seqno + "/"
+                            + s.expected + " rate:" + s.rate);
+        }
 
         s.srTimestamp = timestamp;
         s.srPackets = packets;
@@ -593,8 +597,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param e
      * @param buff
      * @param offset
@@ -602,7 +606,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processRRSelection(LrmpEntity e, byte[] buff, int offset, 
+    private void processRRSelection(LrmpEntity e, byte[] buff, int offset,
                                     int len) {
         cxt.stats.rrSelect++;
 
@@ -613,7 +617,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
              */
             if (Logger.debug()) {
                 Logger.debug(this, "receiver report sel from non sender");
-            } 
+            }
 
             return;
         }
@@ -646,15 +650,15 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                     if (i > s.rrProb) {
                         send = false;
-                    } 
+                    }
                 } else if (s.rrInterval == 0) {
                     send = false;
-                } 
+                }
                 if (Logger.debug()) {
-                    Logger.debug(this, 
-                                 "RR select prob=" + s.rrProb + " interv=" 
-                                 + s.rrInterval + " " + send);
-                } 
+                    Logger.debug(this,
+                            "RR select prob=" + s.rrProb + " interv="
+                                    + s.rrInterval + " " + send);
+                }
                 if (send) {
                     int delay = randomize(s.rrInterval);
 
@@ -664,11 +668,11 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                     if (!reports.contains(s)) {
                         reports.addElement(s);
-                    } 
+                    }
                 } else {
                     if (reports.contains(s)) {
                         reports.removeElement(s);
-                    } 
+                    }
                 }
 
                 break;
@@ -681,8 +685,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param e
      * @param buff
      * @param offset
@@ -690,7 +694,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processReceiverReport(LrmpEntity e, byte[] buff, int offset, 
+    private void processReceiverReport(LrmpEntity e, byte[] buff, int offset,
                                        int len) {
         int scope = buff[offset + 1];
 
@@ -722,8 +726,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
                     /* suppose the estimation scheme is not changed */
 
                     if (sender.rrProb > 0) {
-                        cxt.stats.populationEstimate = 
-                            (sender.rrReplies << 16) / sender.rrProb + 1;
+                        cxt.stats.populationEstimate =
+                                (sender.rrReplies << 16) / sender.rrProb + 1;
                         cxt.stats.populationEstimateTime = now;
                     }
                 } else {
@@ -748,16 +752,16 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                         if (d != null) {
                             d.updateMRTT(rtt);
-                        } 
+                        }
                     } else {
-                        Logger.error(this, 
-                                     "bad rtt " + rtt + " " + e + " " 
-                                     + NTP.ntp32(now) + "/" + delay + "/" 
-                                     + timestamp);
+                        Logger.error(this,
+                                "bad rtt " + rtt + " " + e + " "
+                                        + NTP.ntp32(now) + "/" + delay + "/"
+                                        + timestamp);
                     }
                     if (Logger.debug()) {
                         Logger.debug(this, "RR from " + e + " rtt=" + rtt);
-                    } 
+                    }
                 }
 
                 /* other field ignored */
@@ -775,8 +779,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param from
      * @param buff
      * @param offset
@@ -784,7 +788,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processData(LrmpEntity from, byte buff[], int offset, 
+    private void processData(LrmpEntity from, byte buff[], int offset,
                              int len) {
         long seqno = getSeqno(buff, offset + 12);
 
@@ -794,8 +798,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         LrmpSender source;
 
         if (!(from instanceof LrmpSender)) {
-            source = cxt.sm.lookupSender(from.getID(), from.getAddress(), 
-                                         seqno);
+            source = cxt.sm.lookupSender(from.getID(), from.getAddress(),
+                    seqno);
         } else {
             source = (LrmpSender) from;
         }
@@ -841,13 +845,13 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         source.incBytes(pack.datalen);
 
         if (Logger.debug()) {
-            Logger.debug(this, 
-                         "data/exp:" + seqno + "/" + source.expected() + " @" 
-                         + pack.rcvSendTime + "/" + pack.scope);
-        } 
+            Logger.debug(this,
+                    "data/exp:" + seqno + "/" + source.expected() + " @"
+                            + pack.rcvSendTime + "/" + pack.scope);
+        }
         if (pack.seqno > source.maxseq) {
             source.maxseq = pack.seqno;
-        } 
+        }
 
         /*
          * check sequence number.
@@ -859,7 +863,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
              */
             if (cxt.profile.sendRepair) {
                 source.putPacket(pack);
-            } 
+            }
 
             /*
              * deliver all cached packets in sequence.
@@ -891,7 +895,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
             if (cxt.profile.sendRepair) {
                 source.putPacket(pack);
-            } 
+            }
         }
     }
 
@@ -899,8 +903,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param from
      * @param buff
      * @param offset
@@ -908,7 +912,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processRepairData(LrmpEntity from, byte buff[], int offset, 
+    private void processRepairData(LrmpEntity from, byte buff[], int offset,
                                    int len) {
 
         /*
@@ -916,7 +920,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
          */
         LrmpEntity e = cxt.sm.get(Utilities.byteToInt(buff, offset + 8));
 
-        if (e == null ||!(e instanceof LrmpSender)) {
+        if (e == null || !(e instanceof LrmpSender)) {
 
             /* have never heard from the sender */
 
@@ -987,13 +991,13 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         source.incBytes(pack.datalen);
 
         if (Logger.debug()) {
-            Logger.debug(this, 
-                         "repair/exp:" + pack.seqno + "/" + source.expected() 
-                         + " @" + pack.rcvSendTime + "/" + pack.scope);
-        } 
+            Logger.debug(this,
+                    "repair/exp:" + pack.seqno + "/" + source.expected()
+                            + " @" + pack.rcvSendTime + "/" + pack.scope);
+        }
         if (pack.seqno > source.maxseq) {
             source.maxseq = pack.seqno;
-        } 
+        }
 
         /*
          * further check.
@@ -1005,7 +1009,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
              */
             if (cxt.profile.sendRepair) {
                 source.putPacket(pack);
-            } 
+            }
 
             /*
              * deliver all cached packets in sequence.
@@ -1026,17 +1030,17 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             cxt.recover.handleLoss(source);
         }
 
-    /*
-     * out of range: diff > maxCacheSize. Ignore.
-     */
+        /*
+         * out of range: diff > maxCacheSize. Ignore.
+         */
     }
 
     /* process U_DATA packet */
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param from
      * @param buff
      * @param offset
@@ -1044,7 +1048,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processUnreliableData(LrmpEntity from, byte buff[], 
+    private void processUnreliableData(LrmpEntity from, byte buff[],
                                        int offset, int len) {
         cxt.stats.outOfBand++;
 
@@ -1063,8 +1067,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param from
      * @param buff
      * @param offset
@@ -1072,16 +1076,17 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      *
      * @see
      */
-    private void processFecData(LrmpEntity from, byte buff[], int offset, 
-                                int len) {}
+    private void processFecData(LrmpEntity from, byte buff[], int offset,
+                                int len) {
+    }
 
     /**
      * handles a reception failure event.
      */
     public void handleSyncError(LrmpSender s, int cause) {
-        Logger.error(this, 
-                     "reception failure @" + s.expected + "/" + s.maxseq 
-                     + " cause=" + cause);
+        Logger.error(this,
+                "reception failure @" + s.expected + "/" + s.maxseq
+                        + " cause=" + cause);
 
         /* for continuous losses, we should report only one event */
 
@@ -1097,7 +1102,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
             if (cxt.profile.handler != null) {
                 cxt.profile.handler.processEvent(
-		    LrmpEventHandler.UNRECOVERABLE_SEQUENCE_ERROR, ev);
+                        LrmpEventHandler.UNRECOVERABLE_SEQUENCE_ERROR, ev);
             }
         }
 
@@ -1136,8 +1141,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
                             cxt.stats.failures++;
 
                             cxt.profile.handler.processEvent(
-				LrmpEventHandler.UNRECOVERABLE_SEQUENCE_ERROR, 
-				ev);
+                                    LrmpEventHandler.UNRECOVERABLE_SEQUENCE_ERROR,
+                                    ev);
                         }
                     }
                 }
@@ -1157,7 +1162,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
             if (pack == null) {
                 break;
-            } 
+            }
 
             deliverData(pack);
             s.incExpected();
@@ -1165,7 +1170,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         if (Logger.debug()) {
             Logger.debug(this, "synced to " + s.expected);
-        } 
+        }
 
         LrmpLossEvent ev1 = cxt.recover.lookup(s, cxt.whoami);
 
@@ -1178,7 +1183,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
             if (ev1.nackCount > 1) {
                 ev1.nackCount--;
-            } 
+            }
         } else {
             cxt.recover.handleLoss(s);
         }
@@ -1186,8 +1191,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param pack
      *
      * @see
@@ -1195,30 +1200,30 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
     private void deliverData(LrmpPacket pack) {
         if (pack.reliable) {
             if (Logger.debug()) {
-                Logger.debug(this, 
-                             "deliver #" + pack.seqno + " len=" 
-                             + pack.datalen);
-            } 
+                Logger.debug(this,
+                        "deliver #" + pack.seqno + " len="
+                                + pack.datalen);
+            }
 
             /*
              * remove from cache if don't participate in local recovery.
              */
             if (!cxt.profile.sendRepair) {
                 ((LrmpSender) pack.source).removePacket(pack);
-            } 
+            }
         } else if (Logger.debug()) {
-            Logger.debug(this, 
-                         "deliver out-of-band" + " len=" + pack.datalen);
-        } 
+            Logger.debug(this,
+                    "deliver out-of-band" + " len=" + pack.datalen);
+        }
         if (cxt.profile.handler != null) {
             cxt.profile.handler.processData(pack);
-        } 
+        }
     }
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param buff
      * @param offset
      *
@@ -1239,8 +1244,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @param pack
      * @param resend
      *
@@ -1264,7 +1269,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
         if (pack.reliable) {        /* XXXXXXXXX */
             cxt.whoami.lastTimeForData = pack.rcvSendTime;
-        } 
+        }
 
         cxt.whoami.setLastTimeHeard(pack.rcvSendTime);
         cxt.whoami.incPackets();
@@ -1274,15 +1279,6 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         cxt.stats.dataBytes += len;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param pack
-     * @param ttl
-     *
-     * @see
-     */
     protected void sendControlPacket(LrmpPacket pack, int ttl) {
         cxt.whoami.setLastTimeHeard(System.currentTimeMillis());
 
@@ -1296,6 +1292,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      * does 32-bit diff of seqno (seq1 - seq2). Handle overflow and underflow.
      * The result will be correct provided that the absolute diff is less than
      * Modulo32/2.
+     *
      * @param seq1 first seqno.
      * @param seq2 second seqno.
      */
@@ -1306,26 +1303,15 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             diff -= Modulo32;
         } else if (diff < -(Modulo32 >> 1)) {
             diff += Modulo32;
-        } 
+        }
 
         return (int) diff;
     }
 
     /* in interval 0.25i to 1.0i */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param i
-     *
-     * @return
-     *
-     * @see
-     */
     private int randomize(int i) {
-        return (int) (i * ((65536 + 3 * (rand.nextInt() & 0xffff)) >> 8) 
-                      >> 10);
+        return (int) (i * ((65536 + 3 * (rand.nextInt() & 0xffff)) >> 8)
+                >> 10);
     }
 
     /**
@@ -1340,7 +1326,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             idleTime = 1000;
         } else if (idleTime > 4000) {
             idleTime = 4000;
-        } 
+        }
         if (event != null) {
             cxt.timer.recallTimer(event);
 
@@ -1352,41 +1338,24 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         startTimer(idleTime);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param millis
-     *
-     * @see
-     */
     private void startTimer(int millis) {
         long t1 = System.currentTimeMillis() + millis;
 
         if (event != null) {
             if (t1 > nextTimeout) {
                 return;
-            } 
+            }
 
             cxt.timer.recallTimer(event);
         }
         if (Logger.debug()) {
             Logger.debug(this, "next timeout in " + millis);
-        } 
+        }
 
         event = cxt.timer.registerTimer(millis, this, null);
         nextTimeout = t1;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param data
-     * @param time
-     *
-     * @see
-     */
     public void handleTimerEvent(Object data, long time) {
         event = null;
 
@@ -1405,7 +1374,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
          * send several sender reports when the transmission is stopped.
          */
         if (cxt.whoami.expected != cxt.whoami.startseq) {
-            if ((time - cxt.whoami.lastTimeForData) 
+            if ((time - cxt.whoami.lastTimeForData)
                     < LrmpEntityManager.sndDropTime) {
                 int diff = (int) (cxt.whoami.nextSRTime - time);
 
@@ -1424,7 +1393,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                     if (interval > 0) {
                         cxt.whoami.setRate(octets * 1000 / interval);
-                    } 
+                    }
 
                     cxt.whoami.srBytes = cxt.whoami.bytes;
                     cxt.whoami.srPackets = cxt.whoami.packets;
@@ -1436,7 +1405,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
                         if (timeout < 2000) {
                             timeout = 2000;
-                        } 
+                        }
                     } else {
                         timeout = cxt.senderReportInterval;
                     }
@@ -1445,15 +1414,15 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
                 } else {
                     timeout = diff;
                 }
-                if (cxt.profile.rcvReportSelection 
-                        != LrmpProfile.NoReceiverReport 
-                        && (time - cxt.whoami.rrSelectTime) 
-                           > cxt.rcvReportSelInterval) {
-                    if (cxt.stats.populationEstimate 
+                if (cxt.profile.rcvReportSelection
+                        != LrmpProfile.NoReceiverReport
+                        && (time - cxt.whoami.rrSelectTime)
+                        > cxt.rcvReportSelInterval) {
+                    if (cxt.stats.populationEstimate
                             < cxt.sm.getNumberOfEntities()) {
-                        cxt.stats.populationEstimate = 
-                            cxt.sm.getNumberOfEntities();
-                    } 
+                        cxt.stats.populationEstimate =
+                                cxt.sm.getNumberOfEntities();
+                    }
 
                     cxt.whoami.rrInterval = 10;     /* seconds */
 
@@ -1461,15 +1430,15 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
                      * limit the number of reports to 100, so using the following
                      * formula probability*population < 100.
                      */
-                    cxt.whoami.rrProb = (100 << 16) 
-                                        / (cxt.stats.populationEstimate + 1);
+                    cxt.whoami.rrProb = (100 << 16)
+                            / (cxt.stats.populationEstimate + 1);
 
                     if (cxt.whoami.rrProb > 0xffff) {
                         cxt.whoami.rrProb = 0xffff;
-                    } 
+                    }
 
-                    p.appendRRSelection(cxt.whoami, cxt.whoami.rrProb, 
-                                        cxt.whoami.rrInterval);
+                    p.appendRRSelection(cxt.whoami, cxt.whoami.rrProb,
+                            cxt.whoami.rrInterval);
 
                     cxt.whoami.rrSelectTime = System.currentTimeMillis();
                     cxt.whoami.rrReplies = 0;
@@ -1479,7 +1448,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             }
             if (Logger.debug()) {
                 Logger.debug(this, "send sender report " + p.offset);
-            } 
+            }
         }
 
         /*
@@ -1503,12 +1472,12 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
             }
             if (delay > 0 && delay < timeout) {
                 timeout = delay;
-            } 
+            }
         }
 
         if (p.offset > 0) {
             sendControlPacket(p, ttl);
-        } 
+        }
 
         /* prune the list of entities heard */
 
@@ -1518,8 +1487,8 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
 
     /*
      * Undocumented Method Declaration.
-     * 
-     * 
+     *
+     *
      * @see
      */
     private void sendSenderReport() {
@@ -1534,14 +1503,6 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         cxt.stats.senderReports++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     *
-     * @see
-     */
     private void sendReceiverReport(LrmpSender s) {
         LrmpPacket p = new LrmpPacket(false, 64);
 
@@ -1554,48 +1515,30 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         cxt.stats.receiverReports++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param now
-     *
-     * @see
-     */
     private void update(long now) {
         int elapsed = (int) (now - lastUpdateTime);
 
         lastUpdateTime = now;
-        cxt.stats.dataRate = (cxt.stats.dataBytes - lastDataBytes) * 1000 
-                             / elapsed;
+        cxt.stats.dataRate = (cxt.stats.dataBytes - lastDataBytes) * 1000 / elapsed;
         lastDataBytes = cxt.stats.dataBytes;
 
         if (cxt.stats.dataRate > cxt.stats.maxDataRate) {
             cxt.stats.maxDataRate = cxt.stats.dataRate;
-        } 
+        }
 
-        cxt.stats.ctlRate = (cxt.stats.ctrlBytes - lastCtrlBytes) * 1000 
-                            / elapsed;
+        cxt.stats.ctlRate = (cxt.stats.ctrlBytes - lastCtrlBytes) * 1000 / elapsed;
         lastCtrlBytes = cxt.stats.ctrlBytes;
 
         if (cxt.stats.ctlRate > cxt.stats.maxCtlRate) {
             cxt.stats.maxCtlRate = cxt.stats.ctlRate;
-        } 
-        if ((now - cxt.stats.populationEstimateTime) > 600000 
-                || cxt.stats.populationEstimate 
-                   < cxt.sm.getNumberOfEntities()) {
+        }
+        if ((now - cxt.stats.populationEstimateTime) > 600000
+                || cxt.stats.populationEstimate
+                < cxt.sm.getNumberOfEntities()) {
             cxt.stats.populationEstimate = cxt.sm.getNumberOfEntities();
-        } 
+        }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public LrmpStats getLrmpStats() {
         update(System.currentTimeMillis());
 
@@ -1624,22 +1567,12 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         return (LrmpStats) stats;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param scope
-     *
-     * @return
-     *
-     * @see
-     */
     public LrmpDomainStats getDomainStats(int scope) {
         LrmpDomain d = cxt.recover.lookupDomain(scope);
 
         if (d != null) {
             return d.stats;
-        } 
+        }
 
         return null;
     }
