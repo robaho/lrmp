@@ -142,23 +142,26 @@ final class LrmpFlow implements Runnable {
             pack.scope = cxt.lrmp.getTTL();
 
             cxt.lrmp.sendDataPacket(pack, false);
+
             flowControl();
-
-            /* wait a transmission interval */
-
-            if (cxt.profile.throughput != LrmpProfile.BestEffort && cxt.sndInterval > 0) {
-                try {
-                    Logger.debug("waiting...");
-                    wait(cxt.sndInterval);
-                } catch (InterruptedException e) {
-                    Logger.error(this, "interrupted!");
-                }
-            }
+            throttle();
         }
 
         thread = null;
 
         cxt.lrmp.idle();
+    }
+
+    /* wait a transmission interval */
+    private void throttle() {
+        if (cxt.profile.throughput != LrmpProfile.BestEffort && cxt.sndInterval > 0) {
+            try {
+                Logger.debug("waiting...");
+                wait(cxt.sndInterval);
+            } catch (InterruptedException e) {
+                Logger.error(this, "interrupted!");
+            }
+        }
     }
 
     private void resend() {
@@ -179,15 +182,7 @@ final class LrmpFlow implements Runnable {
 
             if (!cxt.resendQueue.isEmpty()) {
                 flowControl();
-
-                if (cxt.profile.throughput != LrmpProfile.BestEffort 
-                        && cxt.sndInterval > 0) {
-                    try {
-                        wait(cxt.sndInterval);
-                    } catch (InterruptedException e) {
-                        Logger.error(this, "interrupted!");
-                    }
-                }
+                throttle();
             } else {
                 break;
             }
