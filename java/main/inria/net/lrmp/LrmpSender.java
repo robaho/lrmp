@@ -185,14 +185,6 @@ public final class LrmpSender extends LrmpEntity {
         return lost;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param initialSeqno
-     *
-     * @see
-     */
     protected void clearCache(long initialSeqno) {
         startseq = initialSeqno;
         maxseq = initialSeqno - 1;
@@ -221,76 +213,30 @@ public final class LrmpSender extends LrmpEntity {
         return expected;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param n
-     *
-     * @see
-     */
     protected void highestSeqnoGot(long n) {
         maxseq = n;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incPackets() {
         packets++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incDuplicate() {
         duplicates++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incRepairs() {
         repairs++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incDrops() {
         drops++;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param n
-     *
-     * @see
-     */
     protected void incBytes(int n) {
         bytes += n;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void incExpected() {
         expected++;
         expected = expected % LrmpImpl.Modulo32;
@@ -337,54 +283,18 @@ public final class LrmpSender extends LrmpEntity {
         cache.addPacket(pack);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param pack
-     *
-     * @see
-     */
     protected void removePacket(LrmpPacket pack) {
         cache.removePacket(pack);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param seqno
-     *
-     * @return
-     *
-     * @see
-     */
     protected LrmpPacket getPacket(long seqno) {
         return cache.getPacket(seqno);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param seqno
-     *
-     * @return
-     *
-     * @see
-     */
     protected boolean isCached(long seqno) {
         return cache.containPacket(seqno);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param timestamp
-     *
-     * @see
-     */
     protected void updateJitter(int timestamp) {
         int elapsed = NTP.ntp32(lastTimeForData - timestamp);
 

@@ -176,22 +176,6 @@ public class Lrmp {
     }
 
     /**
-     * Starts the session.
-     * @deprecated it is replaced by <code>start()</code>.
-     */
-    public void startSession() {
-        impl.startSession();
-    }
-
-    /**
-     * Stops the session.
-     * @deprecated it is replaced by <code>stop()</code>.
-     */
-    public void stopSession() {
-        impl.stopSession();
-    }
-
-    /**
      * Sets the profile. The configuration parameters will be reset using the
      * new profile.
      * @param prof the profile to use.

@@ -164,14 +164,6 @@ public final class LrmpStats implements Cloneable {
      */
     public long populationEstimateTime;
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public Object clone() {
         try {
             LrmpStats st = (LrmpStats) super.clone();

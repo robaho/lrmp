@@ -373,16 +373,6 @@ public final class LrmpPacket implements Cloneable {
 
     static boolean backward = true;
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param resend
-     *
-     * @return
-     *
-     * @see
-     */
     protected int formatDataPacket(boolean resend) {
         retransmit = resend;
 
@@ -460,14 +450,6 @@ public final class LrmpPacket implements Cloneable {
         return len;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param evs
-     *
-     * @see
-     */
     protected void appendNack(LrmpLossEvent evs[]) {
         int start = offset;
 
@@ -518,14 +500,6 @@ public final class LrmpPacket implements Cloneable {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
-     */
     protected void appendNack(LrmpLossEvent ev) {
         int start = offset;
 
@@ -563,18 +537,7 @@ public final class LrmpPacket implements Cloneable {
         buff[start + 3] = (byte) (len & 0xff);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     * @param whoami
-     * @param firstReply
-     * @param bitmReply
-     *
-     * @see
-     */
-    protected void appendNackReply(LrmpLossEvent ev, LrmpSender whoami, 
+    protected void appendNackReply(LrmpLossEvent ev, LrmpSender whoami,
                                    int firstReply, int bitmReply) {
         int start = offset;
 

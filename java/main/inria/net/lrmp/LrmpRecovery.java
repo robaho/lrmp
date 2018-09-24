@@ -89,12 +89,6 @@ final class LrmpRecovery implements EventHandler {
         rand = new Random();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     public void stop() {
         if (event != null) {
             cxt.timer.recallTimer(event);
@@ -273,12 +267,6 @@ final class LrmpRecovery implements EventHandler {
         ev.timeoutTime = System.currentTimeMillis() + d;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     private synchronized void startTimer() {
         long future = 0x7fffffffffffffffL;
 
@@ -312,7 +300,6 @@ final class LrmpRecovery implements EventHandler {
     /*
      * the timer has expired, send NACK or repair in need.
      */
-
     public void handleTimerEvent(Object data, long now) {
         event = null;
 
@@ -562,17 +549,7 @@ final class LrmpRecovery implements EventHandler {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param responder
-     * @param ev
-     * @param delay
-     *
-     * @see
-     */
-    public void processNackReply(LrmpEntity responder, LrmpLossEvent ev, 
+    public void processNackReply(LrmpEntity responder, LrmpLossEvent ev,
                                  int delay) {
         LrmpDomain dc = lookupDomain(ev.scope);
 
@@ -781,15 +758,6 @@ final class LrmpRecovery implements EventHandler {
 
     /*
      * allow partial resend.
-     */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ev
-     *
-     * @see
      */
     private void resend(LrmpLossEvent ev) {
         long firstSent = 0;

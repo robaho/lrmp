@@ -53,8 +53,7 @@ final class LrmpContext {
 
     /* flow/congestion control data, rate is in bytes/sec */
 
-    protected int adjust = 
-        LrmpFlow.SmallIncrease;         /* scaled by a factor of 8 */
+    protected int adjust = LrmpFlow.SmallIncrease;         /* scaled by a factor of 8 */
     protected int curRate = 0;          /* dynamically adapted rate */
     protected int actualRate = 0;       /* the actual rate */
     protected int checkInterval;        /* adaptation interval in # of packets */
@@ -105,10 +104,10 @@ final class LrmpContext {
 
             profile.minRate = 125;
         } else {
-            profile.minRate = (profile.minRate * 1000) >> 3;
+            profile.minRate = (profile.minRate * 1000) / 8;
         }
 
-        profile.maxRate = (profile.maxRate * 1000) >> 3;
+        profile.maxRate = (profile.maxRate * 1000) / 8;
 
         if (profile.maxRate <= profile.minRate) {
             profile.maxRate = profile.minRate;
@@ -117,7 +116,7 @@ final class LrmpContext {
         /* init for the first time only */
 
         if (curRate == 0) {
-            curRate = (profile.minRate + profile.maxRate) >> 1;
+            curRate = (profile.minRate + profile.maxRate) / 2;
 
             if (curRate < profile.minRate) {
                 curRate = profile.minRate;
@@ -126,7 +125,7 @@ final class LrmpContext {
             sndInterval = LrmpPacket.MTU * 1000 / curRate;
         }
 
-        checkInterval = profile.sendWindowSize >> 3;
+        checkInterval = profile.sendWindowSize / 8;
 
         if (checkInterval < 4) {
             checkInterval = 4;
