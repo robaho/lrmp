@@ -88,14 +88,6 @@ final class LrmpEntityManager {
      * allocate an entity id.
      */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     private int allocateID() {
         int i = Utilities.getRandomInteger();
 
@@ -114,7 +106,7 @@ final class LrmpEntityManager {
      * @param srcId the entity Id of attendee.
      */
     public LrmpEntity get(int srcId) {
-        return (LrmpEntity) entities.getEntity(srcId);
+        return entities.getEntity(srcId);
     }
 
     /**

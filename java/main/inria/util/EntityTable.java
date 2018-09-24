@@ -85,7 +85,7 @@ public class EntityTable implements Iterable<LrmpEntity> {
      * @param obj the entity to remove.
      */
     public void removeEntity(LrmpEntity obj) {
-        Entity e = map.remove(obj.getID());
+        LrmpEntity e = map.remove(obj.getID());
         if (e!=null && e!=obj) {
             addEntity(obj);
         }

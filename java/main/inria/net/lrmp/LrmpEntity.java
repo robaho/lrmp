@@ -35,17 +35,16 @@
 package inria.net.lrmp;
 
 import java.net.InetAddress;
-import inria.util.Entity;
 
 /**
  * encapsulates the information about an LRMP entity. This object is created and
  * managed internally by LRMP.
  */
-public class LrmpEntity extends Entity {
-    protected final static long SequenceModulo = (long) 1 << 32;
+public class LrmpEntity {
     private InetAddress ipAddr;     /* IP address */
     private long lastTimeHeard;
     private int nack;
+    private int id;
 
     /**
      * round trip time in millis.
@@ -61,8 +60,7 @@ public class LrmpEntity extends Entity {
      * forbidden applications instantiate this object.
      */
     LrmpEntity(int id, InetAddress netaddr) {
-        super(id);
-
+        this.id = id;
         this.ipAddr = netaddr;
 
         reset();
@@ -83,6 +81,10 @@ public class LrmpEntity extends Entity {
      */
     protected void setID(int id) {
         this.id = id;
+    }
+
+    public int getID() {
+        return id;
     }
 
     /**
