@@ -125,7 +125,6 @@ final class LrmpLossEvent implements Cloneable {
      * remove the lost packets reported by the given event from
      * this event.
      */
-
     public void remove(LrmpLossEvent ev) {
         int diff = LrmpImpl.diff32(ev.low, low);
 
@@ -167,8 +166,6 @@ final class LrmpLossEvent implements Cloneable {
             }
         }
     }
-
-    /* debug */
 
     public String toString() {
         return reporter + "->" + source + ":" + low + "/" 

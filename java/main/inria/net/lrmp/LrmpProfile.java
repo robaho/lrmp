@@ -178,14 +178,6 @@ public class LrmpProfile implements Cloneable {
         return reliability == LossAllowed;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public Object clone() {
         try {
             LrmpProfile obj = (LrmpProfile) super.clone();

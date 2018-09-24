@@ -68,14 +68,6 @@ final class LrmpDomain {
     protected Vector lossHistory;
     protected static int historySize = 16;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @param ttl
-     *
-     * @see
-     */
     public LrmpDomain(int ttl) {
         stats = new LrmpDomainStats();
         stats.enabled = true;
@@ -90,44 +82,18 @@ final class LrmpDomain {
         stats.mrtt = initialMRTT << 3;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param c
-     *
-     * @see
-     */
     protected void setParent(LrmpDomain c) {
         parent = c;
         parent.child = this;
         stats.parentScope = parent.scope;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param c
-     *
-     * @see
-     */
     protected void setChild(LrmpDomain c) {
         child = c;
         child.parent = this;
         stats.childScope = child.scope;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param ttl
-     *
-     * @return
-     *
-     * @see
-     */
     public static int getInitialRTT(int ttl) {
         if (ttl <= 15) {
             return 12;
@@ -138,12 +104,6 @@ final class LrmpDomain {
         return (200 * ttl * ttl + 1984) / 3969;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void enable() {
         if (stats.enabled) {
             return;
@@ -161,12 +121,6 @@ final class LrmpDomain {
         } 
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void disable() {
         if (parent == null ||!stats.enabled) {
             return;
@@ -183,14 +137,6 @@ final class LrmpDomain {
         } 
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     protected boolean isEnabled() {
         return stats.enabled;
     }
@@ -199,12 +145,6 @@ final class LrmpDomain {
      * implements the disable conditions.
      */
 
-    /**
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     protected void checkState() {
 
         /* top level domain always enabled */
@@ -238,14 +178,6 @@ final class LrmpDomain {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param rtt
-     *
-     * @see
-     */
     protected void setMRTT(int rtt) {
         stats.mrtt = rtt;
 
@@ -259,16 +191,6 @@ final class LrmpDomain {
      * received NACK events.
      */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param event
-     *
-     * @return
-     *
-     * @see
-     */
     protected boolean isDuplicate(LrmpLossEvent event) {
         boolean dup = false;
         int slice = stats.mrtt >> 3;

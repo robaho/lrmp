@@ -839,18 +839,6 @@ final class LrmpRecovery implements EventHandler {
      * o no repair received after the reception time of the event.
      * return true if the packet is resent.
      */
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param seqno
-     * @param ev
-     *
-     * @return
-     *
-     * @see
-     */
     private boolean resend(long seqno, LrmpLossEvent ev) {
         LrmpPacket p = ev.source.getPacket(seqno);
 

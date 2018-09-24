@@ -101,14 +101,6 @@ public class LrmpErrorEvent {
      */
     protected long timeoutTime;     /* for send report */
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public String toString() {
         StringBuffer sb = new StringBuffer();
 

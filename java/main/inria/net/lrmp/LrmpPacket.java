@@ -674,18 +674,7 @@ public final class LrmpPacket implements Cloneable {
         buff[start + 3] = (byte) (len & 0xff);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param whoami
-     * @param prob
-     * @param period
-     *
-     * @see
-     */
-    protected void appendRRSelection(LrmpSender whoami, int prob, 
-                                     int period) {
+    protected void appendRRSelection(LrmpSender whoami, int prob, int period) {
         int start = offset;
 
         buff[offset] = (byte) ((LrmpImpl.Version << 6) | LrmpImpl.RS_PT);
@@ -697,8 +686,7 @@ public final class LrmpPacket implements Cloneable {
 
         offset += 4;
 
-        Utilities.intToByte(NTP.ntp32(System.currentTimeMillis()), buff, 
-                            offset);
+        Utilities.intToByte(NTP.ntp32(System.currentTimeMillis()), buff,  offset);
 
         offset += 4;
 
@@ -732,16 +720,7 @@ public final class LrmpPacket implements Cloneable {
         buff[start + 3] = (byte) (len & 0xff);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param sender
-     * @param whoami
-     *
-     * @see
-     */
-    protected void appendReceiverReport(LrmpSender sender, 
+    protected void appendReceiverReport(LrmpSender sender,
                                         LrmpSender whoami) {
         int start = offset;
 
@@ -819,16 +798,6 @@ public final class LrmpPacket implements Cloneable {
         buff[start + 3] = (byte) (len & 0xff);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param pack
-     *
-     * @return
-     *
-     * @see
-     */
     protected boolean equals(LrmpPacket pack) {
         return (source.equals(pack.source) && seqno == pack.seqno);
     }

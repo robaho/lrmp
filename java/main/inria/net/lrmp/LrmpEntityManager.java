@@ -35,11 +35,9 @@
 package inria.net.lrmp;
 
 import java.net.*;
-import java.util.*;
-import inria.util.Logger;
-import inria.util.EntityTable;
-import inria.util.Utilities;
-import inria.util.NTP;
+import java.util.function.Predicate;
+
+import inria.util.*;
 
 /**
  * LRMP entity manager. It keeps track of all LRMP senders, and some receivers
@@ -65,12 +63,6 @@ final class LrmpEntityManager {
     protected static final int sndDropTime = 600000;
     protected LrmpProfile profile;
 
-    /*
-     * Undocumented Class Constructor.
-     * 
-     * 
-     * @see
-     */
     LrmpEntityManager() {
         entities = new EntityTable();
 
@@ -119,17 +111,10 @@ final class LrmpEntityManager {
 
     /**
      * gets the entity from srcId.
-     * @param csrc the entity Id of attendee.
+     * @param srcId the entity Id of attendee.
      */
     public LrmpEntity get(int srcId) {
         return (LrmpEntity) entities.getEntity(srcId);
-    }
-
-    /**
-     * gets the list of entities.
-     */
-    public Vector getEntities() {
-        return entities;
     }
 
     /**
@@ -143,7 +128,7 @@ final class LrmpEntityManager {
      * null if conflict.
      */
     public LrmpEntity lookup(int srcId, InetAddress netaddr) {
-        LrmpEntity s = (LrmpEntity) entities.getEntity(srcId);
+        LrmpEntity s = entities.getEntity(srcId);
 
         if (s != null) {
 
@@ -165,8 +150,7 @@ final class LrmpEntityManager {
                  * if the registered entity is still active, drop new entity.
                  * otherwise reuse it for new entity.
                  */
-                long silence = System.currentTimeMillis() 
-                               - s.getLastTimeHeard();
+                long silence = System.currentTimeMillis() - s.getLastTimeHeard();
 
                 if (silence < rcvDropTime) {
                     return null;
@@ -180,23 +164,21 @@ final class LrmpEntityManager {
         }
 
         /*
-         * find duplicate, i.e., at th same net address, because an entity
+         * find duplicate, i.e., at the same net address, because an entity
          * may rejoined the session.
          */
-        for (int i = entities.size() - 1; i >= 0; i--) {
-            s = (LrmpEntity) entities.elementAt(i);
-
-            if (s != whoami &&!(s instanceof LrmpSender)) {
-                if (s.getAddress().equals(netaddr)) {
-                    long silence = System.currentTimeMillis() - s.getLastTimeHeard();
+        for (LrmpEntity e : entities){
+            if (e != whoami &&!(e instanceof LrmpSender)) {
+                if (e.getAddress().equals(netaddr)) {
+                    long silence = System.currentTimeMillis() - e.getLastTimeHeard();
 
                     if (silence >= rcvDropTime) {
-                        remove(s);
-                        s.setID(srcId);
-                        add(s);
-                        s.reset();
+                        remove(e);
+                        e.setID(srcId);
+                        add(e);
+                        e.reset();
 
-                        return s;
+                        return e;
                     }
                 }
             }
@@ -219,7 +201,7 @@ final class LrmpEntityManager {
      * be heard first.
      */
     public LrmpEntity demux(int srcId, InetAddress netaddr) {
-        LrmpEntity s = (LrmpEntity) entities.getEntity(srcId);
+        LrmpEntity s = entities.getEntity(srcId);
 
         if (s == null) {
             return null;
@@ -229,30 +211,6 @@ final class LrmpEntityManager {
         } 
 
         return s;
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    public void clear() {
-        entities.removeAllElements();
-    }
-
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
-    public void dump() {
-        for (int i = entities.size() - 1; i >= 0; i--) {
-            LrmpEntity s = (LrmpEntity) entities.elementAt(i);
-
-            Logger.debug(this, s.toString());
-        }
     }
 
     /**
@@ -267,48 +225,25 @@ final class LrmpEntityManager {
      */
     public void prune(int maxSilence) {
         long now = System.currentTimeMillis();
-
-        for (int i = entities.size() - 1; i >= 0; i--) {
-            LrmpEntity s = (LrmpEntity) entities.elementAt(i);
-
+        entities.prune((Predicate<LrmpEntity>) s -> {
             if (s != whoami) {
                 int silence = (int) (now - s.getLastTimeHeard());
 
                 if (silence >= sndDropTime) {
-                    remove(s);
-                } else if (!(s instanceof LrmpSender) 
-                           && silence >= maxSilence) {
-                    remove(s);
-                } 
+                    return true;
+                } else if (!(s instanceof LrmpSender) && silence >= maxSilence) {
+                    return true;
+                }
             }
-        }
+            return false;
+        });
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public LrmpSender whoami() {
         return whoami;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param srcId
-     * @param netaddr
-     * @param seqno
-     *
-     * @return
-     *
-     * @see
-     */
-    public LrmpSender lookupSender(int srcId, InetAddress netaddr, 
+    public LrmpSender lookupSender(int srcId, InetAddress netaddr,
                                    long seqno) {
         LrmpSender sender;
         LrmpEntity e = demux(srcId, netaddr);
@@ -331,14 +266,6 @@ final class LrmpEntityManager {
         return sender;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     *
-     * @see
-     */
     protected void add(LrmpEntity s) {
         if (entities.size() > maxSrc) {
             for (int maxSilence = rcvDropTime; entities.size() > maxSrc; ) {
@@ -355,22 +282,13 @@ final class LrmpEntityManager {
         entities.addEntity(s);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param s
-     *
-     * @see
-     */
     protected void remove(LrmpEntity s) {
         if (s != whoami) {
             entities.removeEntity(s);
 
             if (s instanceof LrmpSender) {
                 if (profile.handler != null) {
-                    profile.handler.processEvent(
-			LrmpEventHandler.END_OF_SEQUENCE, s);
+                    profile.handler.processEvent(LrmpEventHandler.END_OF_SEQUENCE, s);
                 } 
             }
         }

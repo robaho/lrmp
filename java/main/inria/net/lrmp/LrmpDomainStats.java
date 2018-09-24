@@ -122,14 +122,6 @@ public final class LrmpDomainStats implements Cloneable {
         return (mrtt >> 3);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @return
-     *
-     * @see
-     */
     public Object clone() {
         try {
             return super.clone();

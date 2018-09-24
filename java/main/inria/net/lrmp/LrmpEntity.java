@@ -138,6 +138,5 @@ public class LrmpEntity extends Entity {
     protected void setLastTimeHeard(long t) {
         lastTimeHeard = t;
     }
-
 }
 

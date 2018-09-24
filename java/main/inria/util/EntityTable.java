@@ -45,144 +45,73 @@
  */
 package inria.util;
 
-import java.util.*;
+import inria.net.lrmp.LrmpEntity;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.function.Predicate;
 
 /**
- * EntityTable contains a set of entities indexed by ID. An EntityTable is generally
- * cheaper and offers faster access than Hashtable. All entities are sorted
- * in the table by ID.
+ * EntityTable contains a set of entities indexed by ID.
  */
-public class EntityTable extends Vector {
+public class EntityTable implements Iterable<LrmpEntity> {
+    private Map<Integer, LrmpEntity> map = new HashMap<>();
 
     /**
      * constructs an EntityTable object.
      */
     public EntityTable() {
-        super(8, 8);
-    }
-
-    /**
-     * constructs an EntityTable object.
-     * @param initialCapacity the initial capacity.
-     * @param increments the increments for expanding the table.
-     */
-    public EntityTable(int initialCapacity, int increments) {
-        super(initialCapacity, increments);
     }
 
     /**
      * adds the given entity to the table.
      * @param obj the entity to be added.
      */
-    public void addEntity(Entity obj) {
-
-        /*
-         * keeps the list sorted according to the id.
-         */
-        int l = 0;                  /* low bound */
-        int h = elementCount;       /* high bound */
-
-        while ((h - l) > 0) {
-            int m = (h + l) >> 1;
-            Entity ent = (Entity) elementData[m];
-
-            if (ent.getID() < obj.getID()) {
-                l = m + 1;
-            } else if (ent.getID() > obj.getID()) {
-                h = m;
-            } else {
-                return;     /* already exists in cache */
-            }
-        }
-
-        insertElementAt(obj, l);
-    }
-
-    /**
-     * contains the entity.
-     * @param id the entity ID.
-     */
-    public boolean containEntity(int id) {
-        int l = 0;                  /* low bound */
-        int h = elementCount;       /* high bound */
-
-        while ((h - l) > 0) {
-            int m = (h + l) >> 1;
-            Entity obj = (Entity) elementData[m];
-
-            if (obj.getID() < id) {
-                l = m + 1;
-            } else if (obj.getID() > id) {
-                h = m;
-            } else {
-                return true;
-            }
-        }
-
-        return false;
+    public void addEntity(LrmpEntity obj) {
+        map.put(obj.getID(),obj);
     }
 
     /**
      * gets the entity.
      * @param id the entity ID.
      */
-    public Entity getEntity(int id) {
-        int l = 0;                  /* low bound */
-        int h = elementCount;       /* high bound */
-
-        while ((h - l) > 0) {
-            int m = (h + l) >> 1;
-            Entity obj = (Entity) elementData[m];
-
-            if (obj.getID() < id) {
-                l = m + 1;
-            } else if (obj.getID() > id) {
-                h = m;
-            } else {
-                return obj;
-            }
-        }
-
-        return null;
+    public LrmpEntity getEntity(int id) {
+        return map.get(id);
     }
 
     /**
      * remove the given entity from the table.
      * @param obj the entity to remove.
      */
-    public void removeEntity(Entity obj) {
-        for (int i = 0; i < elementCount; i++) {
-            if (obj.equals(elementData[i])) {
-                removeElementAt(i);
-
-                return;
-            }
+    public void removeEntity(LrmpEntity obj) {
+        Entity e = map.remove(obj.getID());
+        if (e!=null && e!=obj) {
+            addEntity(obj);
         }
+    }
+
+    public int size() {
+        return map.size();
     }
 
     /**
-     * remove the entity with the given ID from the table.
-     * @param id the entity ID.
+     * drops old recorded entities.
      */
-    public void removeEntity(int id) {
-        int l = 0;                  /* low bound */
-        int h = elementCount;       /* high bound */
+    public void prune(Predicate<LrmpEntity> filter) {
 
-        while ((h - l) > 0) {
-            int m = (h + l) >> 1;
-            Entity obj = (Entity) elementAt(m);
-
-            if (obj.getID() < id) {
-                l = m + 1;
-            } else if (obj.getID() > id) {
-                h = m;
-            } else {
-                removeElementAt(m);
-
-                return;
+        Iterator<LrmpEntity> i = map.values().iterator();
+        while(i.hasNext()) {
+            LrmpEntity e = i.next();
+            if (filter.test(e)) {
+                i.remove();
             }
         }
     }
 
+    @Override
+    public Iterator<LrmpEntity> iterator() {
+        return map.values().iterator();
+    }
 }
 

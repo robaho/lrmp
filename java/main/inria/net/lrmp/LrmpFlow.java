@@ -80,12 +80,6 @@ final class LrmpFlow implements Runnable {
         cxt.sendQueue.sync();
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @see
-     */
     private synchronized void start() {
         if (thread == null) {
             Logger.debug("creating new thread");
@@ -152,9 +146,9 @@ final class LrmpFlow implements Runnable {
 
             /* wait a transmission interval */
 
-            if (cxt.profile.throughput != LrmpProfile.BestEffort 
-                    && cxt.sndInterval > 0) {
+            if (cxt.profile.throughput != LrmpProfile.BestEffort && cxt.sndInterval > 0) {
                 try {
+                    Logger.debug("waiting...");
                     wait(cxt.sndInterval);
                 } catch (InterruptedException e) {
                     Logger.error(this, "interrupted!");
@@ -244,8 +238,8 @@ final class LrmpFlow implements Runnable {
 
         /* due to CPU load and break */
 
-        if (cxt.actualRate < ((cxt.curRate * 3) >> 2)) {
-            cxt.sndInterval = (cxt.sndInterval * 3) >> 2;
+        if (cxt.actualRate < ((cxt.curRate * 3) / 4)) {
+            cxt.sndInterval = (cxt.sndInterval * 3) / 4;
         } 
         if (cxt.sndInterval > 30000) {
             cxt.sndInterval = 30000;
