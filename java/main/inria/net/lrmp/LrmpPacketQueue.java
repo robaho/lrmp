@@ -36,16 +36,19 @@ package inria.net.lrmp;
 
 import inria.util.Logger;
 
-import java.util.ArrayDeque;
-import java.util.Iterator;
-import java.util.Queue;
+import java.util.*;
 
 /**
  * ordered queue of lrmp packets. Sequence number may not be unique for
  * resend queue due to many sources in case of local recovery.
  */
 final class LrmpPacketQueue {
-    private Queue<LrmpPacket> queue = new ArrayDeque<>(34);
+    private Queue<LrmpPacket> queue = new PriorityQueue<>(new Comparator<LrmpPacket>() {
+        @Override
+        public int compare(LrmpPacket o1, LrmpPacket o2) {
+            return Long.compare(o1.seqno,o2.seqno);
+        }
+    });
 
     /**
      * constructs an LrmpPacketQueue.
