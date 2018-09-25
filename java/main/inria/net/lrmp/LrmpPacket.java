@@ -58,8 +58,6 @@ import inria.util.*;
  */
 public final class LrmpPacket implements Cloneable {
     protected static final int padBit = 0x20;
-    protected static final int strtBit = 0x02;
-    protected static final int endBit = 0x01;
 
     /**
      * LRMP maximum transmission unit including the packet header. The header
@@ -103,16 +101,6 @@ public final class LrmpPacket implements Cloneable {
      * per-packet reliability, default value is true.
      */
     protected boolean reliable;
-
-    /**
-     * the start marker.
-     */
-    protected boolean first = false;
-
-    /**
-     * the end marker.
-     */
-    protected boolean end = false;
 
     /**
      * sequence number.
@@ -230,14 +218,6 @@ public final class LrmpPacket implements Cloneable {
         if ((buff[offset] & 0x20) > 0) {
             datalen -= (buff[offset + len - 1] & 0xff);
         } 
-        if (backward) {
-            if ((buff[offset] & LrmpPacket.strtBit) > 0) {
-                first = true;
-            } 
-            if ((buff[offset] & LrmpPacket.endBit) > 0) {
-                end = true;
-            } 
-        }
 
         scope = buff[offset + 1] & 0xff;
         rcvSendTime = System.currentTimeMillis();
@@ -310,54 +290,6 @@ public final class LrmpPacket implements Cloneable {
     }
 
     /**
-     * Sets the start merker.
-     * @deprecated it is removed.
-     */
-    public void setFirst(boolean f) {
-        first = f;
-    }
-
-    /**
-     * Sets the end merker.
-     * @deprecated it is removed.
-     */
-    public void setLast(boolean f) {
-        end = f;
-    }
-
-    /**
-     * Returns the start merker.
-     * @deprecated it is removed.
-     */
-    public boolean isFirstOfBlock() {
-        return first;
-    }
-
-    /**
-     * Returns the end merker.
-     * @deprecated it is removed.
-     */
-    public boolean isLastOfBlock() {
-        return end;
-    }
-
-    /**
-     * Returns the start merker.
-     * @deprecated it is removed.
-     */
-    public boolean isFirst() {
-        return first;
-    }
-
-    /**
-     * Returns the end merker.
-     * @deprecated it is removed.
-     */
-    public boolean isLast() {
-        return end;
-    }
-
-    /**
      * sets the reliable flag.
      */
     protected void setReliable(boolean b) {
@@ -370,8 +302,6 @@ public final class LrmpPacket implements Cloneable {
     protected void setSource(LrmpEntity s) {
         source = s;
     }
-
-    static boolean backward = true;
 
     protected int formatDataPacket(boolean resend) {
         retransmit = resend;
@@ -399,13 +329,6 @@ public final class LrmpPacket implements Cloneable {
         } else {
             buff[start] = (byte) (LrmpImpl.Version << 6);
 
-            if (first) {
-                buff[start] |= (byte) strtBit;
-            } 
-            if (end) {
-                buff[start] |= (byte) endBit;
-            } 
-
             /* fill the length field */
 
             buff[start + 2] = (byte) ((len >> 8) & 0xff);
@@ -414,17 +337,9 @@ public final class LrmpPacket implements Cloneable {
             Utilities.intToByte(source.getID(), buff, start + 4);
 
             if (reliable) {
-
-                /*
-                 * for backward compatibility XXXXX
-                 */
                 int timestamp;
 
-                if (backward) {
-                    timestamp = source.getID();
-                } else {
-                    timestamp = NTP.ntp32(System.currentTimeMillis());
-                }
+                timestamp = NTP.ntp32(System.currentTimeMillis());
 
                 Utilities.intToByte(timestamp, buff, start + 8);
                 Utilities.intToByte((int) seqno, buff, start + 12);
@@ -592,14 +507,6 @@ public final class LrmpPacket implements Cloneable {
         }
     }
 
-    /*
-     * Undocumented Method Declaration.
-     * 
-     * 
-     * @param whoami
-     *
-     * @see
-     */
     protected void appendSenderReport(LrmpSender whoami) {
         int start = offset;
 
@@ -612,8 +519,7 @@ public final class LrmpPacket implements Cloneable {
 
         offset += 4;
 
-        Utilities.intToByte(NTP.ntp32(System.currentTimeMillis()), buff, 
-                            offset);
+        Utilities.intToByte(NTP.ntp32(System.currentTimeMillis()), buff, offset);
 
         offset += 4;
 
@@ -683,8 +589,7 @@ public final class LrmpPacket implements Cloneable {
         buff[start + 3] = (byte) (len & 0xff);
     }
 
-    protected void appendReceiverReport(LrmpSender sender,
-                                        LrmpSender whoami) {
+    protected void appendReceiverReport(LrmpSender sender, LrmpSender whoami) {
         int start = offset;
 
         buff[offset] = (byte) ((LrmpImpl.Version << 6) | LrmpImpl.RR_PT);

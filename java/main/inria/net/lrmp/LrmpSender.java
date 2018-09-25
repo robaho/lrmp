@@ -263,7 +263,7 @@ public final class LrmpSender extends LrmpEntity {
 
             /* i = 0.75i + 0.25new */
 
-            interval = (3 * interval + i) >> 2;
+            interval = (3 * interval + i) / 4;
         }
     }
 
@@ -314,7 +314,7 @@ public final class LrmpSender extends LrmpEntity {
             d = -d;
         } 
 
-        jitter += d - ((jitter + 8) >> 4);
+        jitter += d - ((jitter + 8) / 16);
     }
 
 }

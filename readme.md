@@ -5,7 +5,7 @@ with one to many and many to many network traffic.
 
 **References**
 
-[internet draft specification](draft-liao-lrmp-00.txt)
+[internet draft specification](doc/draft-liao-lrmp-00.txt)
 
 [online specification, may be newer](https://tools.ietf.org/html/draft-liao-lrmp-00)
 
