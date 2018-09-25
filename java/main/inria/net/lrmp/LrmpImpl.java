@@ -126,24 +126,10 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         cxt.setProfile(prof);
     }
 
-    /*
-     * Undocumented Method Declaration.
-     *
-     *
-     * @return
-     *
-     * @see
-     */
     public LrmpSender whoami() {
         return cxt.whoami;
     }
 
-    /*
-     * Undocumented Method Declaration.
-     *
-     *
-     * @see
-     */
     public void startSession() {
 
         LrmpContext.timer = EventManager.shared();

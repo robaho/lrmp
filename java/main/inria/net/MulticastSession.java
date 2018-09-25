@@ -273,8 +273,7 @@ abstract public class MulticastSession implements Runnable {
              * only reuse the buffer, DatagramPacket can't be reused due to some
              * problems in DatagramSocket.
              */
-            if (!parse(packet.getData(), packet.getLength(), 
-                       packet.getAddress())) {
+            if (!parse(packet.getData(), packet.getLength(),packet.getAddress())) {
                 buff = null;
             } 
         }
