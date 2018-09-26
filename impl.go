@@ -2,6 +2,7 @@ package lrmp
 
 import (
 	"fmt"
+	"golang.org/x/net/ipv4"
 	"math/rand"
 	"net"
 	"strconv"
@@ -15,14 +16,15 @@ type impl struct {
 	idleTime    int64
 	session     *msession
 	ttl         int
-	random      rand.Rand
-	reports     map[Entity]bool
+	reports     map[Entity]*sender
+	event       *timerTask
+	nextTimeout time.Time
 }
 
-const checkInterval = 10000
 const maxPacketSize = MTU
 const VersionNumber = 1
 const Modulo32 int64 = int64(1) << 32
+const checkInterval = 10000
 
 const (
 	DATA_PT   = 0
@@ -71,13 +73,165 @@ func (i *impl) send(pack *Packet) error {
 		i.idleTime = 0
 		i.cxt.whoami.nextSRTime = time.Now().Add(time.Duration(i.cxt.senderReportInterval))
 
-		startTimer(i.cxt.senderReportInterval)
+		i.startTimer(i.cxt.senderReportInterval)
 	}
 	return nil
 }
 
-func startTimer(interval int) {
-	panic("implement me!")
+func (i *impl) startTimer(millis int) {
+	t1 := addMillis(time.Now(), millis)
+
+	if i.event != nil {
+		if t1.After(i.nextTimeout) {
+			return
+		}
+
+		timer.recallTimer(i.event)
+	}
+	if isDebug() {
+		logDebug("next timeout in ", millis)
+	}
+
+	i.event = timer.registerTimer(millis, i, nil)
+	i.nextTimeout = t1
+}
+
+func (i *impl) handleTimerEvent(data interface{}, thetime time.Time) {
+	i.event = nil
+
+	p := newPacket(false, 1024)
+
+	p.scope = i.ttl
+	p.offset = 0
+
+	timeout := checkInterval
+
+	cxt := i.cxt
+
+	/*
+	 * no sender reports if
+	 * 1. never send data.
+	 * 2. just sent out-of-band data.
+	 * 3. has not sent data since the max silence (drop) time.
+	 * send several sender reports when the transmission is stopped.
+	 */
+	if cxt.whoami.expected != cxt.whoami.startseq {
+		if thetime.Sub(cxt.whoami.lastTimeForData) < sndDropTime {
+			diff := int(millis(cxt.whoami.nextSRTime.Sub(thetime)))
+
+			if diff <= 0 {
+				p.appendSenderReport(cxt.whoami)
+
+				cxt.stats.senderReports++
+
+				/* update rate */
+
+				octets := cxt.whoami.bytes - cxt.whoami.srBytes
+
+				interval := millis(thetime.Sub(cxt.whoami.srTimestamp))
+
+				interval = ((interval >> 8) * 1000) >> 8
+
+				if interval > 0 {
+					cxt.whoami.setRate(octets * 1000 / int(interval))
+				}
+
+				cxt.whoami.srBytes = cxt.whoami.bytes
+				cxt.whoami.srPackets = cxt.whoami.packets
+				cxt.whoami.srSeqno = cxt.whoami.expected
+				cxt.whoami.srTimestamp = thetime
+
+				if millis(thetime.Sub(cxt.whoami.lastTimeForData)) > i.idleTime {
+					timeout = int(millis(thetime.Sub(cxt.whoami.lastTimeForData)))
+					if timeout < 2000 {
+						timeout = 2000
+					}
+				} else {
+					timeout = cxt.senderReportInterval
+				}
+
+				cxt.whoami.nextSRTime = addMillis(thetime, timeout)
+			} else {
+				timeout = diff
+			}
+
+			if timeout > cxt.rcvReportSelInterval {
+				timeout = cxt.rcvReportSelInterval
+			}
+
+			if cxt.profile.rcvReportSelection != NoReceiverReport && int(millis(thetime.Sub(cxt.whoami.rrSelectTime))) > cxt.rcvReportSelInterval {
+
+				if cxt.stats.populationEstimate < cxt.sm.getNumberOfEntities() {
+					cxt.stats.populationEstimate = cxt.sm.getNumberOfEntities()
+				}
+
+				cxt.whoami.rrInterval = 10 /* seconds */
+
+				/*
+				 * limit the number of reports to 100, so using the following
+				 * formula probability*population < 100.
+				 */
+				cxt.whoami.rrProb = (100 << 16) / (cxt.stats.populationEstimate + 1)
+
+				if cxt.whoami.rrProb > 0xffff {
+					cxt.whoami.rrProb = 0xffff
+				}
+
+				p.appendRRSelection(cxt.whoami, cxt.whoami.rrProb, cxt.whoami.rrInterval)
+
+				cxt.whoami.rrSelectTime = time.Now()
+				cxt.whoami.rrReplies = 0
+				cxt.stats.populationEstimate = 0
+				cxt.stats.rrSelect++
+			}
+		}
+		if isDebug() {
+			logDebug("send sender report ", p.offset)
+		}
+	}
+
+	/*
+	 * check if send receiver reports.
+	 */
+	for e, s := range i.reports {
+
+		delay := int(s.nextRRTime.Sub(thetime))
+
+		if delay <= 0 {
+			p.appendReceiverReport(s, cxt.whoami)
+
+			cxt.stats.receiverReports++
+
+			if s.rrProb > 0 { /* once */
+				delete(i.reports, e)
+			} else {
+				delay = i.randomize(s.rrInterval)
+				s.nextRRTime = addMillis(thetime, delay)
+			}
+		}
+		if delay > 0 && delay < timeout {
+			timeout = delay
+		}
+	}
+
+	if p.offset > 0 {
+		i.sendControlPacket(p, i.ttl)
+	}
+
+	/* prune the list of entities heard */
+	cxt.sm.prune(rcvDropTime)
+	i.startTimer(timeout)
+}
+
+func (i *impl) sendControlPacket(pack *Packet, ttl int) {
+	cxt := i.cxt
+
+	cxt.whoami.setLastTimeHeard(time.Now())
+
+	cxt.stats.ctrlPackets++
+	cxt.stats.ctrlBytes += pack.offset
+
+	i.session.send(pack.buff, pack.offset, ttl)
 }
 
 func (i *impl) flush() {
@@ -94,7 +248,7 @@ func (i *impl) setTTL(ttl int) {
 
 func newImpl(addr string, port int, ttl int, network string, profile Profile) (*impl, error) {
 
-	saddr, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
+	group, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
 	}
@@ -104,13 +258,23 @@ func newImpl(addr string, port int, ttl int, network string, profile Profile) (*
 		return nil, err
 	}
 
-	l, err := net.ListenMulticastUDP("udp", ifi, saddr)
+	l, err := net.ListenMulticastUDP("udp4", ifi, group)
 	if err != nil {
 		return nil, err
 	}
 
-	impl := impl{ttl: ttl, cxt: newContext()}
-	impl.session = newSession(l, &impl)
+	p := ipv4.NewPacketConn(l)
+
+	p.SetMulticastInterface(ifi)
+	p.SetMulticastLoopback(true)
+
+	impl := impl{ttl: ttl, cxt: newContext(p.LocalAddr(), ttl)}
+	impl.reports = make(map[Entity]*sender)
+	impl.session = newSession(p, &impl, group)
+
+	impl.cxt.whoami = impl.cxt.sm.whoami
+
+	impl.cxt.setProfile(&profile)
 
 	return &impl, nil
 }
@@ -134,7 +298,7 @@ func diff32(seq1, seq2 int64) int {
 
 /* in interval 0.25i to 1.0i */
 func (impl *impl) randomize(i int) int {
-	return (int)(i * ((65536 + 3*(impl.random.Int()&0xffff)) >> 8) >> 10)
+	return (int)(i * ((65536 + 3*(rand.Int()&0xffff)) >> 8) >> 10)
 }
 
 func sendSenderReport() {
@@ -158,7 +322,7 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 		return
 	}
 
-	var k = int(buff[0]&0xff) >> 6
+	var k int = int(buff[0]&0xff) >> 6
 
 	if k != VersionNumber {
 		cxt.stats.badVersion++
@@ -175,7 +339,7 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 
 	/* ignore loopback packets */
 
-	if i.cxt.whoami.getID() == k && i.cxt.whoami.getAddress() == netaddr {
+	if i.cxt.whoami.getID() == k && i.cxt.whoami.getAddress().String() == netaddr.String() {
 		return
 	}
 
@@ -204,7 +368,7 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 	var offset = 0
 
 	for offset < totalLen {
-		len := byteToShort(buff, offset+2)
+		len := int(byteToShort(buff, offset+2))
 
 		if len < 12 || (len+offset) > totalLen {
 			cxt.stats.badLength++
@@ -258,11 +422,11 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 			if k >= DATA_PT && k < R_DATA_PT {
 				i.processData(s, b, offset, len)
 			} else if k >= R_DATA_PT && k < U_DATA_PT {
-				processRepairData(s, b, offset, len)
+				i.processRepairData(s, b, offset, len)
 			} else if k >= U_DATA_PT && k < F_DATA_PT {
-				processUnreliableData(s, b, offset, len)
+				i.processUnreliableData(s, b, offset, len)
 			} else if k == R_DATA_PT {
-				processFecData(s, b, offset, len)
+				i.processFecData(s, b, offset, len)
 			} else {
 				logError("bad data pt " + strconv.Itoa(k))
 			}
@@ -288,9 +452,9 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 
 	for ; len >= 12; len -= 12 {
 
-		/* the destinated source */
+		/* the designated source */
 
-		k := byteToInt(buff, offset)
+		k := int(byteToInt(buff, offset))
 		e := i.cxt.sm.get(k)
 
 		if _, isSender := e.(*sender); !isSender {
@@ -304,7 +468,7 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 		ev.rcvSendTime = time.Now()
 		ev.low = int64(byteToInt(buff, offset))
 		offset += 4
-		ev.bitmask = byteToInt(buff, offset)
+		ev.bitmask = uint32(byteToInt(buff, offset))
 		offset += 4
 		ev.scope = scope
 		ev.reporter = s
@@ -319,7 +483,7 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 		/* rate adaptation */
 
 		if e == i.cxt.whoami {
-			k = (int)(cxt.whoami.expected - int64(ev.low))
+			k = int(cxt.whoami.expected - int64(ev.low))
 
 			if k > (cxt.whoami.cacheSize >> 1) {
 				cxt.adjust = BigDecrease
@@ -349,7 +513,7 @@ func (i *impl) processNackReply(s Entity, buff []byte, offset int, len int) {
 	cxt := i.cxt
 
 	for ; len >= 8; len -= 24 {
-		to := byteToInt(buff, offset)
+		to := int(byteToInt(buff, offset))
 
 		offset += 4
 
@@ -361,7 +525,7 @@ func (i *impl) processNackReply(s Entity, buff []byte, offset int, len int) {
 
 		offset += 4
 
-		dataSrc := byteToInt(buff, offset)
+		dataSrc := int(byteToInt(buff, offset))
 
 		e := cxt.sm.get(dataSrc)
 
@@ -385,7 +549,7 @@ func (i *impl) processNackReply(s Entity, buff []byte, offset int, len int) {
 
 		ev.low = int64(byteToInt(buff, offset))
 		offset += 4
-		ev.bitmask = byteToInt(buff, offset)
+		ev.bitmask = uint32(byteToInt(buff, offset))
 		offset += 4
 		ev.scope = scope
 		ev.timestamp = timestamp
@@ -511,7 +675,7 @@ func (i *impl) processRRSelection(e Entity, buff []byte, offset int, len int) {
 			send := true
 
 			if s.rrProb > 0 {
-				i := i.random.Int()
+				i := rand.Int()
 				i &= 0xffff
 				if i > s.rrProb {
 					send = false
@@ -533,12 +697,12 @@ func (i *impl) processRRSelection(e Entity, buff []byte, offset int, len int) {
 
 				s.nextRRTime = time.Now().Add(time.Duration(delay) * time.Millisecond)
 
-				startTimer(delay)
+				i.startTimer(delay)
 
 				_, ok := i.reports[s]
 
 				if !ok {
-					i.reports[s] = true
+					i.reports[s] = s
 				}
 			} else {
 				delete(i.reports, s)
@@ -758,8 +922,8 @@ func (i *impl) handleSyncError(s *sender, cause int) {
 		ev.seqlost = int(s.expected)
 		i.cxt.stats.failures++
 
-		if i.cxt.profile.handler != nil {
-			i.cxt.profile.handler.ProcessEvent(UNRECOVERABLE_SEQUENCE_ERROR, ev)
+		if i.cxt.profile.Handler != nil {
+			i.cxt.profile.Handler.ProcessEvent(UNRECOVERABLE_SEQUENCE_ERROR, ev)
 		}
 	}
 
@@ -785,7 +949,7 @@ func (i *impl) handleSyncError(s *sender, cause int) {
 				i.deliverData(pack)
 			} else {
 				if lastpack != nil {
-					if i.cxt.profile.handler != nil {
+					if i.cxt.profile.Handler != nil {
 						if ev == nil {
 							ev = newErrorEvent()
 							ev.source = s
@@ -797,7 +961,7 @@ func (i *impl) handleSyncError(s *sender, cause int) {
 						ev.seqlost = int(s.expected)
 						i.cxt.stats.failures++
 
-						i.cxt.profile.handler.ProcessEvent(UNRECOVERABLE_SEQUENCE_ERROR, ev)
+						i.cxt.profile.Handler.ProcessEvent(UNRECOVERABLE_SEQUENCE_ERROR, ev)
 					}
 				}
 			}
@@ -847,7 +1011,7 @@ func (i *impl) handleSyncError(s *sender, cause int) {
 func (i *impl) deliverData(pack *Packet) {
 	if pack.isReliable {
 		if isDebug() {
-			logDebug("deliver #", pack.seqno, " len=", pack.datalen)
+			logDebug("deliver #", pack.seqno, " len=", pack.datalen, "from", pack.source)
 		}
 
 		/*
@@ -859,7 +1023,149 @@ func (i *impl) deliverData(pack *Packet) {
 	} else if isDebug() {
 		logDebug("deliver out-of-band", " len=", pack.datalen)
 	}
-	if i.cxt.profile.handler != nil {
-		i.cxt.profile.handler.ProcessData(pack)
+	if i.cxt.profile.Handler != nil {
+		i.cxt.profile.Handler.ProcessData(pack)
 	}
+}
+
+/* process R_DATA packet */
+
+func (i *impl) processRepairData(from Entity, buff []byte, offset int, len int) {
+
+	cxt := i.cxt
+	/*
+	 * check the source.
+	 */
+	e := cxt.sm.get(byteToInt(buff, offset+8))
+
+	if _, isSender := e.(*sender); !isSender {
+
+		/* have never heard from the sender */
+
+		return
+	}
+
+	source := e.(*sender)
+
+	source.incRepairs()
+
+	/*
+	 * check the seqno. Ignore duplicate, update reception stats and stop.
+	 */
+	seqno := int64(byteToInt(buff, offset+12))
+	pack := source.getPacket(seqno)
+
+	if pack != nil {
+		pack.scope = int(buff[offset+1] & 0xff)
+		pack.rcvSendTime = time.Now()
+
+		if source != cxt.whoami {
+			source.incDuplicate()
+
+			/* call this method for possible duplicate repair suppression */
+
+			cxt.recover.heardRepair(pack, true)
+		}
+
+		return
+	} else if source == cxt.whoami {
+
+		/*
+		 * ignore repair packets for my own.
+		 */
+		return
+	}
+
+	diff := diff32(seqno, source.expected)
+
+	if diff < 0 {
+		source.incDuplicate()
+
+		return
+	}
+
+	/*
+	 * at this point it is really a repair.
+	 */
+	pack = newDataPacket(true, buff, offset, len)
+	pack.retransmit = true
+	pack.seqno = seqno
+	pack.source = source
+	pack.sender = from
+
+	/* call this method for update stats */
+
+	cxt.recover.heardRepair(pack, false)
+
+	/*
+	 * update stats.
+	 */
+	if pack.sender == source {
+		source.lastTimeForData = pack.rcvSendTime
+		source.lastseq = pack.seqno
+	}
+
+	source.incPackets()
+	source.incBytes(pack.datalen)
+
+	if isDebug() {
+		logDebug("repair/exp:", pack.seqno, "/", source.expected, " @", pack.rcvSendTime, "/", pack.scope)
+	}
+	if pack.seqno > source.maxseq {
+		source.maxseq = pack.seqno
+	}
+
+	/*
+	 * further check.
+	 */
+	if diff == 0 {
+
+		/*
+		 * good repair, keeps a local copy in cache for local repair.
+		 */
+		if cxt.profile.sendRepair {
+			source.putPacket(pack)
+		}
+
+		/*
+		 * deliver all cached packets in sequence.
+		 */
+		for pack != nil {
+			source.incExpected()
+			i.deliverData(pack)
+
+			pack = source.getPacket(source.expected)
+		}
+	} else if diff <= source.cacheSize {
+
+		/*
+		 * out of order but in range, that is, loss is still recoverable.
+		 * cache the packet and process loss.
+		 */
+		source.putPacket(pack)
+		cxt.recover.handleLoss(source)
+	}
+
+	/*
+	 * out of range: diff > maxCacheSize. Ignore.
+	 */
+}
+
+/* process U_DATA packet */
+func (i *impl) processUnreliableData(from Entity, buff []byte, offset int, len int) {
+	i.cxt.stats.outOfBand++
+
+	/* pack the data into a packet */
+
+	pack := newDataPacket(false, buff, offset, len)
+
+	pack.source = from
+
+	i.deliverData(pack)
+
+	return
+}
+
+/* process F_DATA packet */
+func (i *impl) processFecData(from Entity, buff []byte, offset int, len int) {
 }

@@ -15,7 +15,7 @@ type sender struct {
 	maxseq          int64
 	expected        int64
 	lastseq         int64
-	rrAbsLost       int64
+	rrAbsLost       int
 	rrMaxSeqno      int64
 	lastError       int64
 	packets         int
@@ -121,5 +121,7 @@ func (s *sender) removePacket(packet *Packet) {
 }
 func (s *sender) isCached(seqno int64) bool {
 	return s.cache.containPacket(seqno)
-
+}
+func (s *sender) incRepairs() {
+	s.repairs++
 }

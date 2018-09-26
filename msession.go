@@ -2,19 +2,21 @@ package lrmp
 
 import (
 	"fmt"
+	"golang.org/x/net/ipv4"
 	"math/rand"
 	"net"
 )
 
 type msession struct {
-	con     *net.UDPConn
+	con     *ipv4.PacketConn
 	impl    *impl
 	packets int
 	bytes   int64
+	addr    *net.UDPAddr
 }
 
-func newSession(con *net.UDPConn, impl *impl) *msession {
-	s := msession{con: con, impl: impl}
+func newSession(con *ipv4.PacketConn, impl *impl, addr *net.UDPAddr) *msession {
+	s := msession{con: con, impl: impl, addr: addr}
 	return &s
 }
 
@@ -22,7 +24,7 @@ func (s *msession) start() {
 	go func() {
 		var buffer [maxPacketSize]byte
 		for {
-			n, addr, err := s.con.ReadFromUDP(buffer[:])
+			n, _, addr, err := s.con.ReadFrom(buffer[:])
 
 			if false && drop() {
 				//Logger.trace(this, "drop packet")
@@ -32,9 +34,8 @@ func (s *msession) start() {
 			s.packets += 1
 			s.bytes += int64(n)
 
-			s.impl.parse(buffer[:n], n, addr)
+			s.impl.parse(buffer[:n], n, addr.(*net.UDPAddr))
 
-			fmt.Println("I got a packet from ", addr)
 			if err != nil {
 				fmt.Println("reader existing")
 				break
@@ -51,11 +52,14 @@ func (s *msession) stop() {
  */
 func (s *msession) send(buf []byte, len int, ttl int) {
 	if false && drop() {
-		//Logger.trace(this, "drop packet");
+		logDebug("drop packet")
 		return
 	}
 
-	s.con.WriteTo(buf, s.con.RemoteAddr())
+	_, err := s.con.WriteTo(buf[:len], nil, s.addr)
+	if err != nil {
+		logError("unable to write to socket", err)
+	}
 }
 
 /*

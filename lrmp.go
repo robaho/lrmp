@@ -37,7 +37,7 @@ func (l *Lrmp) WhoAmI() Entity {
 }
 
 func (l *Lrmp) Send(packet *Packet) error {
-	if packet.getDataLength() > packet.getMaxDataLength() {
+	if packet.GetDataLength() > packet.GetMaxDataLength() {
 		return errors.New("bad packet length")
 	}
 	return l.impl.send(packet)

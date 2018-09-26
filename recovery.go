@@ -1,13 +1,16 @@
 package lrmp
 
-import "math/rand"
+import (
+	"math/rand"
+	"time"
+)
 
 type recovery struct {
 	cxt    *Context
 	ttl    int
 	domain *domain
 	random rand.Rand
-	event  *lossEvent
+	event  *timerTask
 }
 
 func newRecovery(ttl int, cxt *Context) *recovery {
@@ -47,7 +50,7 @@ func newRecovery(ttl int, cxt *Context) *recovery {
 
 func (r *recovery) stop() {
 	if r.event != nil {
-		r.cxt.timer.recallTimer(r.event)
+		timer.recallTimer(r.event)
 		r.event = nil
 		r.domain.lossTab.clear()
 	}
@@ -101,8 +104,8 @@ func (r *recovery) handleLoss(s *sender) {
 
 		/* schedule a timer */
 
-		nackTimer(ev)
-		startTimer()
+		r.nackTimer(ev)
+		r.startTimer()
 	} else {
 
 		/*
@@ -116,9 +119,23 @@ func (r *recovery) handleLoss(s *sender) {
 		ev.nextAction = SendNack
 	}
 }
-func (r *recovery) lookupDomain(scope int) *domain {
+
+/**
+* lookups a domain which matches the given scope, provided that the lookup
+* begins from the lowest domain.
+ */
+func (r *recovery) lookupDomain(ttl int) *domain {
+	for d := r.domain; d != nil; d = d.parent {
+		if d.parent == nil || ttl <= d.scope {
+			return d
+		}
+	}
+
+	return nil
 }
-func (r *recovery) lookup(s *sender, whoami *sender) *lossEvent {
+
+func (r *recovery) lookup(s *sender, reporter Entity) *lossEvent {
+	return r.domain.lossTab.lookup(s, reporter)
 }
 
 /**
@@ -161,7 +178,7 @@ func (r *recovery) nackTimer(ev *lossEvent) {
 			d = ev.domain.initialMRTT
 		}
 
-		d = int(d * (1.0 + rand.Float64()))
+		d = int(float64(d) * (1.0 + rand.Float64()))
 
 		if ev.source.interval < 200 {
 			d += ev.source.interval
@@ -169,11 +186,17 @@ func (r *recovery) nackTimer(ev *lossEvent) {
 			d += 200
 		}
 	} else {
-		d = (int)(d * (1.0 + rand.Float64()))
+		d = int(float64(d) * (1.0 + rand.Float64()))
 	}
 	if isDebug() {
 		logDebug("NACK timer=", d, " #", ev.nackCount, " ", ev.domain.stats.getRTT(), "/", ev.source.interval, "@", ev.scope)
 	}
 
-	ev.timeoutTime = System.currentTimeMillis() + d
+	ev.timeoutTime = time.Now().Add(time.Duration(d) * time.Millisecond)
+}
+
+func (r *recovery) startTimer() {
+}
+
+func (r *recovery) heardRepair(packet *Packet, dup bool) {
 }

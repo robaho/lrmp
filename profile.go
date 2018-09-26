@@ -13,24 +13,25 @@ const (
 )
 
 type Profile struct {
-	Handler        EventHandler
-	sendWindowSize int
-	rcvWindowSize  int
-	minRate        int
-	maxRate        int
-	sendRepair     bool
-	Ordered        bool
-	Reliability    int
-	Throughput     int
-	handler        EventHandler
+	Handler            EventHandler
+	sendWindowSize     int
+	rcvWindowSize      int
+	minRate            int
+	maxRate            int
+	sendRepair         bool
+	Ordered            bool
+	Reliability        int
+	Throughput         int
+	rcvReportSelection int
 }
 
 func (profile *Profile) lossAllowed() bool {
-
+	return profile.Reliability == LossAllowed
 }
 
 func NewProfile() *Profile {
 	p := Profile{sendWindowSize: 64, rcvWindowSize: 64, minRate: 8, maxRate: 64, sendRepair: true, Ordered: true, Reliability: NoLoss, Throughput: AdaptedThroughput}
+	p.rcvReportSelection = RandomReceiverReport
 	return &p
 }
 

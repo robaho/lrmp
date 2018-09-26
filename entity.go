@@ -1,7 +1,9 @@
 package lrmp
 
 import (
+	"math/rand"
 	"net"
+	"strconv"
 	"time"
 )
 
@@ -35,6 +37,10 @@ type EntityImpl struct {
 	rtt int
 	// approx number of hops from local site.
 	distance int
+}
+
+func (e *EntityImpl) String() string {
+	return strconv.FormatInt(int64(e.getID()), 16) + "@" + e.getAddress().String()
 }
 
 func (e *EntityImpl) getID() int {
@@ -86,35 +92,67 @@ type entityManager struct {
 	profile  *Profile
 }
 
+func newEntityManager(addr net.Addr) *entityManager {
+	i := allocateID()
+
+	var initSeqno int64 = 0
+
+	for initSeqno <= 0 {
+		initSeqno = int64(rand.Int() & 0xffff)
+	}
+
+	em := entityManager{entities: make(map[int]Entity)}
+
+	em.whoami = newSender(i, addr.(*net.UDPAddr), initSeqno)
+
+	if isDebug() {
+		logDebug("local user=", em.whoami, " seqno=", em.whoami.expected)
+	}
+
+	em.add(em.whoami)
+
+	return &em
+}
+
+func allocateID() int {
+	return rand.Int()
+}
+
 func (m *entityManager) lookup(srcId int, addr *net.UDPAddr) Entity {
-	e, ok := m.entities[srcId]
-	if !ok {
-		return nil
+	s := m.entities[srcId]
+
+	if s != nil {
+		if s.getAddress().String() != addr.String() {
+			_, ok := s.(*sender)
+			if ok {
+				return nil // if the registered is a sender, reject new one
+			}
+
+			silence := time.Now().Sub(s.getLastTimeHeard())
+
+			if silence < time.Duration(rcvDropTime)*time.Millisecond {
+				return nil
+			}
+
+			s.setAddress(addr)
+			s.reset()
+
+			return s
+		} else {
+			return s
+		}
 	}
 
-	if e.getAddress() != addr {
-		_, ok := e.(*sender)
-		if ok {
-			return nil // if the registered is a sender, reject new one
-		}
-
-		silence := time.Now().Sub(e.getLastTimeHeard())
-
-		if silence < time.Duration(rcvDropTime)*time.Millisecond {
-			return nil
-		}
-
-		e.setAddress(addr)
-		e.reset()
-
-		return e
-	}
+	/*
+	 * find duplicate, i.e., at the same net address, because an entity
+	 * may rejoined the session.
+	 */
 
 	for _, e := range m.entities {
 		_, isSender := e.(*sender)
 
 		if e != m.whoami && !isSender {
-			if e.getAddress() == addr {
+			if e.getAddress().String() == addr.String() {
 				silence := time.Now().Sub(e.getLastTimeHeard())
 
 				if silence >= time.Duration(rcvDropTime)*time.Millisecond {
@@ -129,13 +167,13 @@ func (m *entityManager) lookup(srcId int, addr *net.UDPAddr) Entity {
 		}
 	}
 
-	e = &EntityImpl{}
-	e.setID(srcId)
-	e.setAddress(addr)
+	s = &EntityImpl{}
+	s.setID(srcId)
+	s.setAddress(addr)
 
-	m.add(e)
+	m.add(s)
 
-	return e
+	return s
 }
 
 func (m *entityManager) remove(e Entity) {
@@ -143,8 +181,8 @@ func (m *entityManager) remove(e Entity) {
 		delete(m.entities, e.getID())
 
 		if _, isSender := e.(*sender); isSender {
-			if m.profile.handler != nil {
-				m.profile.handler.ProcessEvent(END_OF_SEQUENCE, e)
+			if m.profile.Handler != nil {
+				m.profile.Handler.ProcessEvent(END_OF_SEQUENCE, e)
 			}
 		}
 	}
@@ -193,7 +231,7 @@ func (m *entityManager) demux(srcId int, netaddr *net.UDPAddr) Entity {
 	if s == nil {
 		return nil
 	}
-	if s.getAddress() != netaddr {
+	if s.getAddress().String() != netaddr.String() {
 		return nil
 	}
 
@@ -202,6 +240,7 @@ func (m *entityManager) demux(srcId int, netaddr *net.UDPAddr) Entity {
 
 func (m *entityManager) lookupSender(srcId int, netaddr *net.UDPAddr, seqno int64) *sender {
 	var s *sender
+
 	e := m.demux(srcId, netaddr)
 
 	if e == nil {
@@ -218,4 +257,7 @@ func (m *entityManager) lookupSender(srcId int, netaddr *net.UDPAddr, seqno int6
 	}
 
 	return s
+}
+func (m *entityManager) getNumberOfEntities() int {
+	return len(m.entities)
 }

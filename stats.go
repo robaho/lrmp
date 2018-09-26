@@ -15,6 +15,7 @@ type Stats struct {
 	populationEstimate     int
 	populationEstimateTime time.Time
 	failures               int
+	outOfBand              int
 }
 type DomainStats struct {
 	childScope int

@@ -14,7 +14,6 @@ type lossHistory []*lossEvent
 const historySize = 16
 
 type domain struct {
-	ttl            int
 	lastTimeToggle time.Time
 	failedNack     int
 	lossTab        *lossTable
@@ -89,6 +88,20 @@ func (d *domain) isEnabled() bool {
 }
 
 func newDomain(ttl int) *domain {
-	d := domain{ttl: ttl}
+	d := domain{scope: ttl}
+
+	d.initialMRTT = getInitialRTT(d.scope)
+	d.stats.mrtt = d.initialMRTT << 3
+
 	return &d
+}
+
+func getInitialRTT(ttl int) int {
+	if ttl <= 15 {
+		return 12
+	} else if ttl >= 126 {
+		return 800
+	}
+
+	return (200*ttl*ttl + 1984) / 3969
 }

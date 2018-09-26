@@ -14,13 +14,14 @@ type lossEvent struct {
 	rcvSendTime time.Time
 	low         int64
 	high        int64
-	bitmask     int32
+	bitmask     uint32
 	scope       int
 	reporter    Entity
 	timestamp   int
 	nextAction  int
 	nackCount   uint
 	domain      *domain
+	timeoutTime time.Time
 }
 
 func (ev *lossEvent) computeBitmask() {
@@ -44,7 +45,7 @@ func (ev *lossEvent) computeBitmask() {
 
 	for i := 1; i <= maxdiff; i++ {
 		if !ev.source.isCached(ev.low + int64(i)) {
-			ev.bitmask |= int32(0x1 << uint(i-1))
+			ev.bitmask |= uint32(0x1 << uint(i-1))
 			ev.high = ev.low + int64(i)
 		}
 	}
