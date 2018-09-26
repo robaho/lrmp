@@ -8,15 +8,15 @@ import (
 )
 
 type msession struct {
-	con     *ipv4.PacketConn
+	socket  *ipv4.PacketConn
 	impl    *impl
 	packets int
 	bytes   int64
-	addr    *net.UDPAddr
+	gaddr   *net.UDPAddr
 }
 
-func newSession(con *ipv4.PacketConn, impl *impl, addr *net.UDPAddr) *msession {
-	s := msession{con: con, impl: impl, addr: addr}
+func newSession(socket *ipv4.PacketConn, impl *impl, gaddr *net.UDPAddr) *msession {
+	s := msession{socket: socket, impl: impl, gaddr: gaddr}
 	return &s
 }
 
@@ -24,7 +24,7 @@ func (s *msession) start() {
 	go func() {
 		var buffer [maxPacketSize]byte
 		for {
-			n, _, addr, err := s.con.ReadFrom(buffer[:])
+			n, _, addr, err := s.socket.ReadFrom(buffer[:])
 
 			if false && drop() {
 				//Logger.trace(this, "drop packet")
@@ -34,7 +34,7 @@ func (s *msession) start() {
 			s.packets += 1
 			s.bytes += int64(n)
 
-			s.impl.parse(buffer[:n], n, addr.(*net.UDPAddr))
+			s.impl.parse(buffer[:n], n, addr.(*net.UDPAddr).IP)
 
 			if err != nil {
 				fmt.Println("reader existing")
@@ -44,7 +44,7 @@ func (s *msession) start() {
 	}()
 }
 func (s *msession) stop() {
-	s.con.Close()
+	s.socket.Close()
 }
 
 /**
@@ -56,8 +56,10 @@ func (s *msession) send(buf []byte, len int, ttl int) {
 		return
 	}
 
-	s.con.SetMulticastTTL(ttl)
-	_, err := s.con.WriteTo(buf[:len], nil, s.addr)
+	s.socket.SetMulticastTTL(ttl)
+	s.socket.SetTTL(ttl)
+
+	_, err := s.socket.WriteTo(buf[:len], nil, s.gaddr)
 	if err != nil {
 		logError("unable to write to socket", err)
 	}

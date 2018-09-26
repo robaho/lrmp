@@ -1,10 +1,13 @@
 package lrmp
 
-import "time"
+import (
+	"errors"
+	"strconv"
+	"time"
+)
 
 type Packet struct {
-	len          int
-	isReliable   bool
+	reliable     bool
 	seqno        int64
 	scope        int
 	retransmitID int
@@ -18,21 +21,109 @@ type Packet struct {
 	retransmit   bool
 }
 
+const padBit = 0x20
+
 func (packet *Packet) GetDataLength() int {
-	return packet.len
+	return packet.datalen
 }
 func (packet *Packet) GetMaxDataLength() int {
 	return packet.maxDataLen
 }
 
-func (packet *Packet) GetData() []byte {
-	return packet.buff[packet.offset : packet.offset+packet.datalen]
+func (packet *Packet) GetDataBuffer() []byte {
+	return packet.buff[packet.offset : packet.offset+packet.maxDataLen]
 }
 
-func (packet *Packet) appendSenderReport(whoami *sender) {
+func (packet *Packet) SetDataLength(length int) error {
+	if length > packet.maxDataLen {
+		return errors.New("maximum data length of " + strconv.Itoa(packet.maxDataLen))
+	}
+	packet.datalen = length
+	return nil
 }
 
-func (packet *Packet) appendRRSelection(whoami *sender, prob int, interval int) {
+func (p *Packet) appendSenderReport(whoami *sender) {
+
+	offset := p.offset
+	buff := p.buff
+
+	start := offset
+
+	buff[offset] = byte((VersionNumber << 6) | SR_PT)
+	offset++
+	buff[offset] = byte(p.scope)
+	offset += 3
+
+	intToByte(int(whoami.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(ntp32(nowMillis()), buff, offset)
+
+	offset += 4
+
+	intToByte(int(whoami.expected), buff, offset)
+
+	offset += 4
+
+	intToByte(whoami.packets, buff, offset)
+
+	offset += 4
+
+	intToByte(whoami.bytes, buff, offset)
+
+	offset += 4
+
+	/* fill the length field */
+
+	len := offset - start
+
+	shortToByte(len, buff, start+2)
+}
+
+func (p *Packet) appendRRSelection(whoami *sender, prob int, period int) {
+	offset := p.offset
+	buff := p.buff
+
+	start := offset
+
+	buff[offset] = (byte)((VersionNumber << 6) | RS_PT)
+	offset++
+	buff[offset] = byte(p.scope)
+	offset += 3
+
+	intToByte(int(whoami.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(ntp32(nowMillis()), buff, offset)
+
+	offset += 4
+
+	/* probability */
+
+	shortToByte(prob, buff, offset)
+	offset += 2
+
+	/* period */
+
+	shortToByte(period, buff, offset)
+	offset += 2
+
+	buff[offset] = byte(0xff)
+	offset++
+	buff[offset] = byte(0xff)
+	offset++
+	buff[offset] = byte(0xff)
+	offset++
+	buff[offset] = byte(0xff)
+	offset++
+
+	/* fill the length field */
+
+	len := offset - start
+
+	shortToByte(len, buff, start+2)
 }
 
 func (p *Packet) appendReceiverReport(sender *sender, whoami *sender) {
@@ -46,11 +137,11 @@ func (p *Packet) appendReceiverReport(sender *sender, whoami *sender) {
 	buff[offset] = byte(p.scope)
 	offset += 3
 
-	intToByte(whoami.getID(), buff, offset)
+	intToByte(int(whoami.getID()), buff, offset)
 
 	offset += 4
 
-	intToByte(sender.getID(), buff, offset)
+	intToByte(int(sender.getID()), buff, offset)
 
 	offset += 4
 
@@ -119,8 +210,7 @@ func (p *Packet) appendReceiverReport(sender *sender, whoami *sender) {
 
 	len := offset - start
 
-	buff[start+2] = (byte)((len >> 8) & 0xff)
-	buff[start+3] = (byte)(len & 0xff)
+	shortToByte(len, buff, start+2)
 
 	p.offset = offset
 
@@ -128,11 +218,11 @@ func (p *Packet) appendReceiverReport(sender *sender, whoami *sender) {
 
 const MTU = 1400
 
-func newPacket(reliable bool, length int) *Packet {
+func NewPacket(reliable bool, length int) *Packet {
 
 	p := Packet{}
 
-	p.isReliable = reliable
+	p.reliable = reliable
 
 	if reliable {
 		p.offset = 16
@@ -161,7 +251,7 @@ func newDataPacket(reliable bool, buff []byte, offset int, len int) *Packet {
 	p := Packet{}
 
 	p.buff = buff
-	p.isReliable = reliable
+	p.reliable = reliable
 
 	if reliable {
 		p.datalen = len - 16
@@ -181,4 +271,65 @@ func newDataPacket(reliable bool, buff []byte, offset int, len int) *Packet {
 	p.rcvSendTime = time.Now()
 
 	return &p
+}
+
+func (p *Packet) formatDataPacket(resend bool) int {
+	p.retransmit = resend
+
+	var headerlen int
+
+	if p.reliable {
+		headerlen = 16
+	} else {
+		headerlen = 8
+	}
+
+	/* mod 4 */
+
+	len := (p.datalen + headerlen + 3) & 0xfffc
+	start := p.offset - headerlen
+
+	buff := p.buff
+
+	buff[start+1] = byte(p.scope)
+
+	if resend {
+		buff[start] |= R_DATA_PT
+
+		intToByte(int(p.sender.getID()), buff, start+4)
+		intToByte(int(p.source.getID()), buff, start+8)
+	} else {
+		buff[start] = (byte)(VersionNumber << 6)
+
+		/* fill the length field */
+
+		shortToByte(len, buff, start+2)
+
+		intToByte(int(p.source.getID()), buff, start+4)
+
+		if p.reliable {
+			timestamp := ntp32(nowMillis())
+
+			intToByte(timestamp, buff, start+8)
+			intToByte(int(p.seqno), buff, start+12)
+		} else {
+			buff[start] |= U_DATA_PT
+		}
+
+		/* padding */
+
+		pad := len - (p.datalen + headerlen)
+
+		if pad > 0 {
+			buff[start] |= byte(padBit)
+
+			for i := start + len - 2; i > (start + len - pad); i-- {
+				buff[i] = 0
+			}
+
+			buff[start+len-1] = byte(pad)
+		}
+	}
+
+	return len
 }

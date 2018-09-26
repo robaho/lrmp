@@ -39,10 +39,10 @@ type sender struct {
 	rrReplies       int
 }
 
-func newSender(id int, netaddr *net.UDPAddr, start int64) *sender {
+func newSender(id uint32, ip net.IP, start int64) *sender {
 	s := sender{}
 	s.id = id
-	s.ipAddr = netaddr
+	s.ipAddr = ip
 	s.initCache(128)
 	s.resetWithSeqNo(start)
 
@@ -124,4 +124,7 @@ func (s *sender) isCached(seqno int64) bool {
 }
 func (s *sender) incRepairs() {
 	s.repairs++
+}
+func (s *sender) appendPacket(packet *Packet) {
+	s.cache.addPacket(packet)
 }

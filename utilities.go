@@ -25,6 +25,11 @@ func intToByte(i int, buff []byte, offset int) {
 	buff[offset+3] = byte(i)
 }
 
+func shortToByte(i int, buff []byte, offset int) {
+	buff[offset] = byte(i >> 8)
+	buff[offset+1] = byte(i)
+}
+
 /**
  * converts milliseconds to 32 bit fixed point integer.
  * @param millis the milliseconds.
@@ -52,6 +57,10 @@ const NtpOffsetMillis32 = int(NtpOffsetSeconds << 16)
 func ntp32(millis int64) int {
 	millis += NtpOffsetMillis
 	return (int)((millis << 16) / 1000)
+}
+
+func nowMillis() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 /**

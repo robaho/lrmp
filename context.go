@@ -43,13 +43,14 @@ const (
 	BigIncrease    = 16
 )
 
-func newContext(addr net.Addr, ttl int) *Context {
+func newContext(ip net.IP, ttl int) *Context {
 	ctx := Context{}
+	ctx.sendQueue = make(chan *Packet, 1000)
 	ctx.senderReportInterval = 4000
 	ctx.rcvReportSelInterval = 30000
 	ctx.sndInterval = 100
 	ctx.adjust = SmallIncrease
-	ctx.sm = newEntityManager(addr)
+	ctx.sm = newEntityManager(ip)
 	ctx.sender = newFlow(&ctx)
 	ctx.recover = newRecovery(ttl, &ctx)
 	return &ctx

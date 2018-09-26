@@ -1,6 +1,8 @@
 package lrmp
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"golang.org/x/net/ipv4"
 	"math/rand"
@@ -25,6 +27,7 @@ const maxPacketSize = MTU
 const VersionNumber = 1
 const Modulo32 int64 = int64(1) << 32
 const checkInterval = 10000
+const broadcastSrc = uint32(0xffffffff)
 
 const (
 	DATA_PT   = 0
@@ -37,6 +40,63 @@ const (
 	RS_PT     = 20
 	RR_PT     = 21
 )
+
+func newImpl(addr string, port int, ttl int, network string, profile Profile) (*impl, error) {
+
+	group, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
+	if err != nil {
+		return nil, err
+	}
+
+	ifi, err := net.InterfaceByName(network)
+	if err != nil {
+		return nil, err
+	}
+
+	addrs, err := ifi.Addrs()
+	if err != nil {
+		return nil, err
+	}
+
+	var laddr net.IP
+
+	for _, a := range addrs {
+		if _, ok := a.(*net.IPNet); ok {
+			laddr = a.(*net.IPNet).IP.To4()
+			if laddr != nil {
+				break
+			}
+		}
+	}
+
+	if laddr == nil {
+		return nil, errors.New("interface does not have IP address")
+	}
+
+	l, err := net.ListenMulticastUDP("udp4", ifi, group)
+	if err != nil {
+		return nil, err
+	}
+
+	socket := ipv4.NewPacketConn(l)
+	socket.SetMulticastInterface(ifi)
+	socket.SetMulticastLoopback(true)
+
+	cxt := newContext(laddr, ttl)
+
+	impl := impl{ttl: ttl, cxt: cxt}
+	impl.reports = make(map[Entity]*sender)
+
+	impl.session = newSession(socket, &impl, group)
+
+	impl.cxt.whoami = impl.cxt.sm.whoami
+
+	impl.cxt.setProfile(&profile)
+
+	impl.cxt.lrmp = &impl
+
+	return &impl, nil
+}
 
 func (i *impl) startSession() {
 	i.session.start()
@@ -61,8 +121,8 @@ func (i *impl) whoAmI() Entity {
 	return i.cxt.whoami
 }
 func (i *impl) send(pack *Packet) error {
-	if pack.isReliable && i.cxt.whoami.lastTimeForData.IsZero() {
-		sendSenderReport()
+	if pack.reliable && i.cxt.whoami.lastTimeForData.IsZero() {
+		i.sendSenderReport()
 		i.cxt.whoami.initCache(i.cxt.profile.sendWindowSize)
 		i.cxt.whoami.lastTimeForData = time.Now()
 	}
@@ -99,7 +159,7 @@ func (i *impl) startTimer(millis int) {
 func (i *impl) handleTimerEvent(data interface{}, thetime time.Time) {
 	i.event = nil
 
-	p := newPacket(false, 1024)
+	p := NewPacket(false, 1024)
 
 	p.scope = i.ttl
 	p.offset = 0
@@ -229,7 +289,7 @@ func (i *impl) sendControlPacket(pack *Packet, ttl int) {
 	cxt.whoami.setLastTimeHeard(time.Now())
 
 	cxt.stats.ctrlPackets++
-	cxt.stats.ctrlBytes += pack.offset
+	cxt.stats.ctrlBytes += int64(pack.offset)
 
 	i.session.send(pack.buff, pack.offset, ttl)
 }
@@ -244,39 +304,6 @@ func (i *impl) setTTL(ttl int) {
 		i.cxt.recover.stop()
 	}
 	i.initRecovery()
-}
-
-func newImpl(addr string, port int, ttl int, network string, profile Profile) (*impl, error) {
-
-	group, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
-	if err != nil {
-		return nil, err
-	}
-
-	ifi, err := net.InterfaceByName(network)
-	if err != nil {
-		return nil, err
-	}
-
-	l, err := net.ListenMulticastUDP("udp4", ifi, group)
-	if err != nil {
-		return nil, err
-	}
-
-	p := ipv4.NewPacketConn(l)
-
-	p.SetMulticastInterface(ifi)
-	p.SetMulticastLoopback(true)
-
-	impl := impl{ttl: ttl, cxt: newContext(p.LocalAddr(), ttl)}
-	impl.reports = make(map[Entity]*sender)
-	impl.session = newSession(p, &impl, group)
-
-	impl.cxt.whoami = impl.cxt.sm.whoami
-
-	impl.cxt.setProfile(&profile)
-
-	return &impl, nil
 }
 
 /**
@@ -301,11 +328,19 @@ func (impl *impl) randomize(i int) int {
 	return (int)(i * ((65536 + 3*(rand.Int()&0xffff)) >> 8) >> 10)
 }
 
-func sendSenderReport() {
-	panic("implement me!")
+func (i *impl) sendSenderReport() {
+	p := NewPacket(false, 64)
+
+	p.scope = i.ttl
+	p.offset = 0
+
+	p.appendSenderReport(i.cxt.whoami)
+	i.sendControlPacket(p, i.ttl)
+
+	i.cxt.stats.senderReports++
 }
 
-func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
+func (i *impl) parse(buff []byte, totalLen int, ip net.IP) {
 
 	cxt := i.cxt
 
@@ -316,50 +351,50 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 		cxt.stats.badLength++
 
 		if isDebug() {
-			logDebug("packet too short (" + strconv.Itoa(totalLen) + ") " + netaddr.String())
+			logDebug("packet too short (" + strconv.Itoa(totalLen) + ") " + ip.String())
 		}
 
 		return
 	}
 
-	var k int = int(buff[0]&0xff) >> 6
+	v := int(buff[0]&0xff) >> 6
 
-	if k != VersionNumber {
+	if v != VersionNumber {
 		cxt.stats.badVersion++
 
 		if isDebug() {
-			logDebug("incorrect version (" + strconv.Itoa(k) + ") " + netaddr.String())
+			logDebug("incorrect version (" + strconv.Itoa(v) + ") " + ip.String())
 		}
 		return
 	}
 
 	/* entity ID */
 
-	k = byteToInt(buff, 4)
+	id := uint32(byteToInt(buff, 4))
 
 	/* ignore loopback packets */
 
-	if i.cxt.whoami.getID() == k && i.cxt.whoami.getAddress().String() == netaddr.String() {
+	if i.cxt.whoami.getID() == id && bytes.Equal(i.cxt.whoami.getAddress(), ip) {
 		return
 	}
 
-	s := cxt.sm.lookup(k, netaddr)
+	s := cxt.sm.lookup(id, ip)
 
 	if s == nil {
 
 		/*
 		 * refused...
 		 */
-		logError("rejected packet from " + strconv.FormatInt(int64(k), 16) + "@" + netaddr.String())
+		logError("rejected packet from " + strconv.FormatInt(int64(id), 16) + "@" + ip.String())
 		return
 	}
 
 	/* a rough estimate of distance XXX */
 
-	k = int(buff[1] & 0xff)
+	d := int(buff[1] & 0xff)
 
-	if s.getDistance() > k {
-		s.setDistance(k)
+	if s.getDistance() > d {
+		s.setDistance(d)
 	}
 
 	/*
@@ -380,13 +415,13 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 
 		/* packet type */
 
-		k = int(buff[offset] & 0x1f)
+		t := int(buff[offset] & 0x1f)
 
-		if k >= 16 {
+		if t >= 16 {
 			cxt.stats.ctrlPackets++
-			cxt.stats.ctrlBytes += len
+			cxt.stats.ctrlBytes += int64(len)
 
-			switch k {
+			switch t {
 
 			case NACK_PT:
 				i.processNack(s, buff, offset, len)
@@ -409,26 +444,26 @@ func (i *impl) parse(buff []byte, totalLen int, netaddr *net.UDPAddr) {
 				break
 
 			default:
-				logError("bad control pt " + strconv.Itoa(k))
+				logError("bad control pt " + strconv.Itoa(t))
 				break
 			}
 		} else {
 			cxt.stats.dataPackets++
-			cxt.stats.dataBytes += len
+			cxt.stats.dataBytes += int64(len)
 
 			b := make([]byte, totalLen)
 			copy(b, buff)
 
-			if k >= DATA_PT && k < R_DATA_PT {
+			if t >= DATA_PT && t < R_DATA_PT {
 				i.processData(s, b, offset, len)
-			} else if k >= R_DATA_PT && k < U_DATA_PT {
+			} else if t >= R_DATA_PT && t < U_DATA_PT {
 				i.processRepairData(s, b, offset, len)
-			} else if k >= U_DATA_PT && k < F_DATA_PT {
+			} else if t >= U_DATA_PT && t < F_DATA_PT {
 				i.processUnreliableData(s, b, offset, len)
-			} else if k == R_DATA_PT {
+			} else if t == R_DATA_PT {
 				i.processFecData(s, b, offset, len)
 			} else {
-				logError("bad data pt " + strconv.Itoa(k))
+				logError("bad data pt " + strconv.Itoa(t))
 			}
 		}
 
@@ -454,8 +489,8 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 
 		/* the designated source */
 
-		k := int(byteToInt(buff, offset))
-		e := i.cxt.sm.get(k)
+		src := uint32(byteToInt(buff, offset))
+		e := i.cxt.sm.get(src)
 
 		if _, isSender := e.(*sender); !isSender {
 			continue
@@ -483,7 +518,7 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 		/* rate adaptation */
 
 		if e == i.cxt.whoami {
-			k = int(cxt.whoami.expected - int64(ev.low))
+			k := int(cxt.whoami.expected - int64(ev.low))
 
 			if k > (cxt.whoami.cacheSize >> 1) {
 				cxt.adjust = BigDecrease
@@ -513,7 +548,7 @@ func (i *impl) processNackReply(s Entity, buff []byte, offset int, len int) {
 	cxt := i.cxt
 
 	for ; len >= 8; len -= 24 {
-		to := int(byteToInt(buff, offset))
+		to := uint32(byteToInt(buff, offset))
 
 		offset += 4
 
@@ -525,7 +560,7 @@ func (i *impl) processNackReply(s Entity, buff []byte, offset int, len int) {
 
 		offset += 4
 
-		dataSrc := int(byteToInt(buff, offset))
+		dataSrc := uint32(byteToInt(buff, offset))
 
 		e := cxt.sm.get(dataSrc)
 
@@ -666,9 +701,9 @@ func (i *impl) processRRSelection(e Entity, buff []byte, offset int, len int) {
 	len -= 16
 
 	for len >= 4 {
-		id := byteToInt(buff, offset)
+		id := uint32(byteToInt(buff, offset))
 
-		if id == 0xffffffff || id == cxt.whoami.getID() {
+		if id == broadcastSrc || id == cxt.whoami.getID() {
 			s.rrSelectTime = time.Now()
 			s.rrReplies = 0
 
@@ -729,7 +764,7 @@ func (i *impl) processReceiverReport(e Entity, buff []byte, offset int, len int)
 	for len >= 20 {
 		cxt.stats.receiverReports++
 
-		to := byteToInt(buff, offset)
+		to := uint32(byteToInt(buff, offset))
 
 		offset += 4
 
@@ -776,7 +811,7 @@ func (i *impl) processReceiverReport(e Entity, buff []byte, offset int, len int)
 						d.updateMRTT(rtt)
 					}
 				} else {
-					logError("bad rtt ", rtt, " ", e, " ", ntp32(now.UnixNano()/int64(time.Millisecond)), "/", delay, "/", timestamp)
+					logError("bad rtt ", rtt, " ", e, " ", ntp32(nowMillis()), "/", delay, "/", timestamp)
 				}
 				if isDebug() {
 					logDebug("RR from ", e, " rtt=", rtt)
@@ -1009,7 +1044,7 @@ func (i *impl) handleSyncError(s *sender, cause int) {
 }
 
 func (i *impl) deliverData(pack *Packet) {
-	if pack.isReliable {
+	if pack.reliable {
 		if isDebug() {
 			logDebug("deliver #", pack.seqno, " len=", pack.datalen, "from", pack.source)
 		}
@@ -1036,7 +1071,7 @@ func (i *impl) processRepairData(from Entity, buff []byte, offset int, len int) 
 	/*
 	 * check the source.
 	 */
-	e := cxt.sm.get(byteToInt(buff, offset+8))
+	e := cxt.sm.get(uint32(byteToInt(buff, offset+8)))
 
 	if _, isSender := e.(*sender); !isSender {
 
@@ -1168,4 +1203,31 @@ func (i *impl) processUnreliableData(from Entity, buff []byte, offset int, len i
 
 /* process F_DATA packet */
 func (i *impl) processFecData(from Entity, buff []byte, offset int, len int) {
+}
+func (i *impl) sendDataPacket(pack *Packet, resend bool) {
+	len := pack.formatDataPacket(resend)
+
+	i.session.send(pack.buff, len, pack.scope)
+
+	if resend {
+		d := i.cxt.recover.lookupDomain(pack.scope)
+
+		d.stats.repairPackets++
+		d.stats.repairBytes += int64(len)
+
+		i.cxt.whoami.incRepairs()
+	}
+
+	pack.rcvSendTime = time.Now()
+
+	if pack.reliable { /* XXXXXXXXX */
+		i.cxt.whoami.lastTimeForData = pack.rcvSendTime
+	}
+
+	i.cxt.whoami.setLastTimeHeard(pack.rcvSendTime)
+	i.cxt.whoami.incPackets()
+	i.cxt.whoami.incBytes(len)
+
+	i.cxt.stats.dataPackets++
+	i.cxt.stats.dataBytes += int64(len)
 }

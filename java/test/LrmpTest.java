@@ -34,7 +34,7 @@ public class LrmpTest {
             LrmpPacket p = new LrmpPacket(true,bytes.length);
             System.arraycopy(bytes,0,p.getDataBuffer(),p.getOffset(),bytes.length);
             p.setDataLength(bytes.length);
-            System.out.println("sending packet");
+            System.out.println("sending message 100 times");
             for(int i =0;i<100;i++){
                 lrmp.send(p);
             }
