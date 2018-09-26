@@ -6,6 +6,7 @@ import (
 	"github.com/robaho/lrmp"
 	"log"
 	"os"
+	"strconv"
 )
 
 type handler struct {
@@ -36,15 +37,14 @@ func main() {
 	for scanner.Scan() {
 		s := scanner.Text()
 
-		bytes := []byte(s)
-
-		p := lrmp.NewPacket(true, len(bytes))
-		copy(p.GetDataBuffer(), bytes)
-		p.SetDataLength(len(bytes))
-
-		fmt.Println("sending message 100 times")
+		fmt.Println("sending message ", s, " 100 times")
 
 		for i := 0; i < 100; i++ {
+			bytes := []byte(s + " #" + strconv.Itoa(i))
+
+			p := lrmp.NewPacket(true, len(bytes))
+			copy(p.GetDataBuffer(), bytes)
+			p.SetDataLength(len(bytes))
 			l.Send(p)
 		}
 	}
