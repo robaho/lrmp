@@ -13,7 +13,7 @@ type handler struct {
 }
 
 func (handler) ProcessData(p *lrmp.Packet) {
-	fmt.Println("got a packet", string(p.GetDataBuffer()))
+	fmt.Println("got a packet", string(p.GetDataBuffer()[:p.GetDataLength()]))
 }
 
 func (handler) ProcessEvent(event int, data interface{}) {
