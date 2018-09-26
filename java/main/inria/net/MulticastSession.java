@@ -49,10 +49,8 @@ abstract public class MulticastSession implements Runnable {
     protected int ttl = 1;
     protected InetAddress inetAddr;
 
-    /* can't reuse a socket for both sending and reception */
+    protected DatagramSocket sock = null;
 
-    protected DatagramSocket sock_in = null;
-    protected DatagramSocket sock_out = null;
     protected int packets = 0;
     protected int bytes = 0;
     protected Thread thread = null;
@@ -91,25 +89,16 @@ abstract public class MulticastSession implements Runnable {
         if (inetAddr != null) {
             if (inetAddr.isMulticastAddress()) {
                 try {
-                    if (sock_in != null) {
-                        ((MulticastSocket) sock_in).leaveGroup(inetAddr);
-                    }
-                    if (sock_out != null) {
-                        ((MulticastSocket) sock_out).leaveGroup(inetAddr);
+                    if (sock != null) {
+                        ((MulticastSocket) sock).leaveGroup(inetAddr);
                     }
                 } catch (IOException e) {
                     Logger.error(this, "failed to leave group", e);
                 }
             }
-            if (sock_in != null) {
-                sock_in.close();
-
-                sock_in = null;
-            }
-            if (sock_out != null) {
-                sock_out.close();
-
-                sock_out = null;
+            if (sock != null) {
+                sock.close();
+                sock = null;
             }
         }
     }
@@ -125,18 +114,13 @@ abstract public class MulticastSession implements Runnable {
         inetAddr = addr;
 
         if (isMulticast(inetAddr)) {
-            sock_in = new MulticastSocket(port);
+            sock = new MulticastSocket(port);
             if (networkInterface!=null) {
-                ((MulticastSocket) sock_in).setNetworkInterface(NetworkInterface.getByName(networkInterface));
+                ((MulticastSocket) sock).setNetworkInterface(NetworkInterface.getByName(networkInterface));
             }
-            ((MulticastSocket) sock_in).joinGroup(inetAddr);
-            sock_out = new MulticastSocket();
-            if (networkInterface!=null) {
-                ((MulticastSocket) sock_in).setNetworkInterface(NetworkInterface.getByName(networkInterface));
-            }
+            ((MulticastSocket) sock).joinGroup(inetAddr);
         } else {
-            sock_in = new DatagramSocket(port);
-            sock_out = new DatagramSocket();
+            sock = new DatagramSocket(port);
         }
 
         this.port = port;
@@ -148,9 +132,9 @@ abstract public class MulticastSession implements Runnable {
      */
     public void setTTL(int t) {
         ttl = t;
-        if (sock_out instanceof MulticastSocket) {
+        if (sock instanceof MulticastSocket) {
             try {
-                ((MulticastSocket) sock_out).setTimeToLive(ttl);
+                ((MulticastSocket) sock).setTimeToLive(ttl);
             } catch (IOException e) {
                 Logger.error("unable to set TTL",e);
             }
@@ -185,7 +169,7 @@ abstract public class MulticastSession implements Runnable {
 
             return;
         }
-        if (sock_out == null) {
+        if (sock == null) {
             Logger.debug(this, "send: null socket");
 
             return;
@@ -195,11 +179,11 @@ abstract public class MulticastSession implements Runnable {
 
         try {
             if (inetAddr.isMulticastAddress()) {
-                MulticastSocket s = (MulticastSocket) sock_out;
+                MulticastSocket s = (MulticastSocket) sock;
                 s.setTimeToLive(ttl);
                 s.send(pack);
             } else {
-                sock_out.send(pack);
+                sock.send(pack);
 
                 /* in unicast, sent packets will not be received */
 
@@ -235,7 +219,7 @@ abstract public class MulticastSession implements Runnable {
         Thread thisThread = Thread.currentThread();
 
         while (thread == thisThread) {
-            if (sock_in == null) {
+            if (sock == null) {
                 Logger.debug(this, "receive: null socket");
 
                 break;
@@ -247,7 +231,7 @@ abstract public class MulticastSession implements Runnable {
             DatagramPacket packet = new DatagramPacket(buff, buff.length);
 
             try {
-                sock_in.receive(packet);
+                sock.receive(packet);
             } catch (IOException e) {
 
                 /*

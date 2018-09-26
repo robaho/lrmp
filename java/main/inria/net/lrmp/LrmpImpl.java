@@ -110,7 +110,7 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
         lastUpdateTime = System.currentTimeMillis();
         rand = new Random();
 
-        if (sock_in instanceof MulticastSocket) {
+        if (sock instanceof MulticastSocket) {
             setTTL(ttl);
         }
 

@@ -30,12 +30,12 @@ public class LrmpTest {
         String s;
 
         while ((s = ((BufferedReader) r).readLine())!=null) {
-            byte[] bytes = s.getBytes();
-            LrmpPacket p = new LrmpPacket(true,bytes.length);
-            System.arraycopy(bytes,0,p.getDataBuffer(),p.getOffset(),bytes.length);
-            p.setDataLength(bytes.length);
-            System.out.println("sending message 100 times");
+            System.out.println("sending message "+s+" 100 times");
             for(int i =0;i<100;i++){
+                byte[] bytes = (s+" #"+i).getBytes();
+                LrmpPacket p = new LrmpPacket(true,bytes.length);
+                System.arraycopy(bytes,0,p.getDataBuffer(),p.getOffset(),bytes.length);
+                p.setDataLength(bytes.length);
                 lrmp.send(p);
             }
         }
