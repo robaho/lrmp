@@ -123,7 +123,7 @@ func (m *entityManager) lookup(srcId uint32, ip net.IP) Entity {
 	s := m.entities[srcId]
 
 	if s != nil {
-		if bytes.Equal(s.getAddress(), ip) {
+		if !bytes.Equal(s.getAddress(), ip) {
 			_, ok := s.(*sender)
 			if ok {
 				return nil // if the registered is a sender, reject new one
