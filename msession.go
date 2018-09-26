@@ -56,6 +56,7 @@ func (s *msession) send(buf []byte, len int, ttl int) {
 		return
 	}
 
+	s.con.SetMulticastTTL(ttl)
 	_, err := s.con.WriteTo(buf[:len], nil, s.addr)
 	if err != nil {
 		logError("unable to write to socket", err)
