@@ -14,7 +14,8 @@ public class LrmpTest {
         profile.setEventHandler(new LrmpEventHandler() {
             @Override
             public void processData(LrmpPacket pack) {
-                System.out.println("I received a packet");
+                System.out.println("I received a packet, with "+
+                        new String(pack.getDataBuffer(),pack.getOffset(),pack.getDataLength()));
             }
 
             @Override
@@ -31,7 +32,7 @@ public class LrmpTest {
         while ((s = ((BufferedReader) r).readLine())!=null) {
             byte[] bytes = s.getBytes();
             LrmpPacket p = new LrmpPacket(true,bytes.length);
-            System.arraycopy(bytes,0,p.getDataBuffer(),0,bytes.length);
+            System.arraycopy(bytes,0,p.getDataBuffer(),p.getOffset(),bytes.length);
             p.setDataLength(bytes.length);
             System.out.println("sending packet");
             for(int i =0;i<100;i++){
