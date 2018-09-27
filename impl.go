@@ -1155,7 +1155,7 @@ func (i *impl) processRepairData(from Entity, buff []byte, offset int, len int) 
 	source.incBytes(pack.datalen)
 
 	if isDebug() {
-		logDebug("repair/exp:", pack.seqno, "/", source.expected, " @", pack.rcvSendTime, "/", pack.scope)
+		logDebug("repair/exp:", pack.seqno, "/", source.expected, " @", times(pack.rcvSendTime), " /", pack.scope)
 	}
 	if pack.seqno > source.maxseq {
 		source.maxseq = pack.seqno

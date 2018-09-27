@@ -70,10 +70,8 @@ func (s *msession) send(buf []byte, len int, ttl int) {
 /*
  * just for simulation.
  */
-var r = rand.Rand{}
-
 func drop() bool {
-	if r.Intn(10) < 2 {
+	if rand.Intn(10) < 2 {
 		return true
 	} else {
 		return false
