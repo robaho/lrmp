@@ -44,6 +44,7 @@ import inria.util.Utilities;
  * an abstract class for managing a multicast/unicast session over DatagramSocket.
  */
 abstract public class MulticastSession implements Runnable {
+    static final boolean DropPackets = false;
     protected int MaxPacketSize = 1024;
     protected int port;
     protected int ttl = 1;
@@ -164,8 +165,8 @@ abstract public class MulticastSession implements Runnable {
      * @param ttl the ttl value to use.
      */
     public synchronized void send(byte buf[], int len, int ttl) {
-        if (false && drop()) {
-            Logger.trace(this, "drop packet");
+        if (DropPackets && drop()) {
+            Logger.debug(this, "drop packet");
 
             return;
         }
@@ -244,8 +245,8 @@ abstract public class MulticastSession implements Runnable {
                 continue;
             }
 
-            if (false && drop()) {
-                Logger.trace(this, "drop packet");
+            if (DropPackets && drop()) {
+                Logger.debug(this, "drop packet");
 
                 continue;
             }
