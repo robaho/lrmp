@@ -19,8 +19,7 @@ type impl struct {
 	session     *msession
 	ttl         int
 	reports     map[Entity]*sender
-	event       *timerTask
-	nextTimeout time.Time
+	task        *timerTask
 }
 
 const maxPacketSize = MTU
@@ -158,10 +157,6 @@ func (i *impl) idle() {
 	} else if idleTime > 4000 {
 		idleTime = 4000
 	}
-	if i.event != nil {
-		timer.recallTimer(i.event)
-		i.event = nil
-	}
 	i.cxt.whoami.nextSRTime = addMillis(now, idleTime)
 	i.startTimer(idleTime)
 }
@@ -169,23 +164,21 @@ func (i *impl) idle() {
 func (i *impl) startTimer(millis int) {
 	t1 := addMillis(time.Now(), millis)
 
-	if i.event != nil {
-		if t1.After(i.nextTimeout) {
+	if i.task != nil {
+		if t1.After(i.task.time) {
 			return
 		}
-
-		timer.recallTimer(i.event)
+		timer.recallTimer(i.task)
 	}
 	if isDebug() {
 		logDebug("next timeout in ", millis)
 	}
 
-	i.event = timer.registerTimer(millis, i, nil)
-	i.nextTimeout = t1
+	i.task = timer.registerTimer(millis, i, nil)
 }
 
 func (i *impl) handleTimerTask(data interface{}, thetime time.Time) {
-	i.event = nil
+	i.task = nil
 
 	p := NewPacket(false, 1024)
 
