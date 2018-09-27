@@ -1,6 +1,9 @@
 package lrmp
 
-import "time"
+import (
+	"container/list"
+	"time"
+)
 
 const (
 	MaxDisableTime = 180000 /* millis */
@@ -9,7 +12,18 @@ const (
 	MaxRTTValue    = 16000
 )
 
-type lossHistory []*lossEvent
+type lossHistory struct {
+	list.List
+}
+
+func (lh *lossHistory) contains(ev *lossEvent) bool {
+	for next := lh.Front(); next != nil; next = next.Next() {
+		if next.Value == ev {
+			return true
+		}
+	}
+	return false
+}
 
 const historySize = 16
 
@@ -86,9 +100,64 @@ func (d *domain) isEnabled() bool {
 	return d.stats.enabled
 
 }
+func (d *domain) isDuplicate(event *lossEvent) bool {
+	dup := false
+	slice := d.stats.mrtt >> 3
+
+	if event.source.interval < 200 {
+		slice += event.source.interval
+	} else {
+		slice += 200
+	}
+
+	for elem := d.lossHistory.Back(); elem != nil; elem = elem.Prev() {
+		ev1 := elem.Value.(*lossEvent)
+
+		if ev1.source != event.source {
+			continue
+		}
+
+		diff := int(millis(event.rcvSendTime.Sub(ev1.rcvSendTime)))
+
+		if diff < slice {
+			if ev1.contains(event) {
+				dup = true
+
+				if isDebug() {
+					logDebug("Dup NACK: ", diff, "<", slice)
+				}
+				break
+			}
+		} else {
+
+			/* keep the most recent */
+
+			if event.contains(ev1) {
+				if isDebug() {
+					logDebug("Repeated nack in ", diff)
+				}
+
+				d.lossHistory.Remove(elem)
+			}
+		}
+	}
+
+	if d.lossHistory.Len() > historySize {
+		d.lossHistory.Remove(d.lossHistory.Front())
+	}
+
+	d.lossHistory.PushBack(event)
+
+	return dup
+}
 
 func newDomain(ttl int) *domain {
 	d := domain{scope: ttl}
+
+	d.stats.enabled = true
+	d.stats.childScope = 0
+
+	/* 200*(scope/63)^2 */
 
 	d.initialMRTT = getInitialRTT(d.scope)
 	d.stats.mrtt = d.initialMRTT << 3

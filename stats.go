@@ -18,11 +18,18 @@ type Stats struct {
 	outOfBand              int
 }
 type DomainStats struct {
-	childScope    int
-	enabled       bool
-	mrtt          int // in 1/8 miilisecs
-	repairPackets int
-	repairBytes   int64
+	childScope           int
+	enabled              bool
+	mrtt                 int // in 1/8 miilisecs
+	repairPackets        int
+	repairBytes          int64
+	nack                 int
+	dupNack              int
+	nackReply            int
+	thirdPartyRepairs    int
+	dupPackets           int
+	dupBytes             int64
+	thirdPartyDuplicates int
 }
 
 func (stats *DomainStats) getRTT() int {

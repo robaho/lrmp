@@ -156,7 +156,7 @@ func (i *impl) startTimer(millis int) {
 	i.nextTimeout = t1
 }
 
-func (i *impl) handleTimerEvent(data interface{}, thetime time.Time) {
+func (i *impl) handleTimerTask(data interface{}, thetime time.Time) {
 	i.event = nil
 
 	p := NewPacket(false, 1024)
@@ -510,7 +510,7 @@ func (i *impl) processNack(s Entity, buff []byte, offset int, len int) {
 		ev.timestamp = timestamp
 
 		if isDebug() {
-			logDebug("got NACK " + fmt.Sprint(ev) + " @" + ev.rcvSendTime.String())
+			logDebug("got NACK " + fmt.Sprint(ev) + " @" + times(ev.rcvSendTime))
 		}
 
 		i.cxt.recover.processNack(ev)
@@ -639,7 +639,7 @@ func (i *impl) processSenderReport(e Entity, buff []byte, offset int, len int) {
 
 	/* estimate the rate */
 
-	if s.srTimestamp != time.Unix(0, 0) {
+	if !s.srTimestamp.IsZero() {
 		interval := timestamp.Sub(s.srTimestamp)
 
 		if interval > 0 {
@@ -887,7 +887,7 @@ func (i *impl) processData(from Entity, buff []byte, offset int, len int) {
 	source.incBytes(pack.datalen)
 
 	if isDebug() {
-		logDebug("data/exp:", seqno, "/", source.expected, " @", pack.rcvSendTime, "/", pack.scope)
+		logDebug("data/exp:", seqno, "/", source.expected, " @", times(pack.rcvSendTime), " /", pack.scope)
 	}
 	if pack.seqno > source.maxseq {
 		source.maxseq = pack.seqno

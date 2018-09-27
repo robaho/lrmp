@@ -76,7 +76,7 @@ func (e *EntityImpl) setRTT(rtt int) {
 }
 func (e *EntityImpl) reset() {
 	e.nack = 0
-	e.lastTimeHeard = time.Unix(0, 0)
+	e.lastTimeHeard = time.Time{}
 	e.distance = 255
 }
 

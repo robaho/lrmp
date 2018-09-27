@@ -16,6 +16,12 @@ func newFlow(cxt *Context) *flow {
 		for {
 			pack := <-f.cxt.sendQueue
 
+			f.resend() // always check resend
+
+			if pack == nil { // might be wakeup from resend queue
+				continue
+			}
+
 			/* send a packet */
 
 			pack.source = cxt.whoami
@@ -142,4 +148,36 @@ func (f *flow) flowControl() {
 	if isDebug() {
 		logDebug("rate/interval: ", cxt.curRate, "/", cxt.sndInterval)
 	}
+}
+func (f *flow) enqueueResend(pack *Packet, scope int) {
+	if f.cxt.resendQueue.contains(pack) {
+		if pack.scope < scope {
+			pack.scope = scope
+		}
+		return
+	}
+
+	if isDebug() {
+		logDebug("enqueue resend seq# ", pack.seqno)
+	}
+
+	pack.scope = scope
+
+	f.cxt.resendQueue.enqueue(pack)
+
+	f.cxt.sendQueue <- nil
+}
+
+func (f *flow) cancelResend(s *sender, seqno int64, scope int) {
+	if isDebug() {
+		logDebug("cancel resend seq# ", seqno)
+	}
+	f.cxt.resendQueue.remove(s, seqno, scope)
+}
+
+func (f *flow) cancelResendByID(s *sender, id int, scope int) {
+	if isDebug() {
+		logDebug("cancel resend retransmit ID# ", id)
+	}
+	f.cxt.resendQueue.cancel(s, id, scope)
 }

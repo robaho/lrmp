@@ -79,6 +79,8 @@ func (p *Packet) appendSenderReport(whoami *sender) {
 	len := offset - start
 
 	shortToByte(len, buff, start+2)
+
+	p.offset = offset
 }
 
 func (p *Packet) appendRRSelection(whoami *sender, prob int, period int) {
@@ -124,6 +126,8 @@ func (p *Packet) appendRRSelection(whoami *sender, prob int, period int) {
 	len := offset - start
 
 	shortToByte(len, buff, start+2)
+
+	p.offset = offset
 }
 
 func (p *Packet) appendReceiverReport(sender *sender, whoami *sender) {
@@ -332,4 +336,98 @@ func (p *Packet) formatDataPacket(resend bool) int {
 	}
 
 	return len
+}
+
+func (p *Packet) appendNackReply(ev *lossEvent, whoami *sender, firstReply int, bitmReply uint32) {
+	start := p.offset
+
+	offset := p.offset
+	buff := p.buff
+
+	buff[offset] = (byte)((VersionNumber << 6) | R_NACK_PT)
+	offset++
+	buff[offset] = byte(ev.scope)
+	offset += 3
+
+	intToByte(int(whoami.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(int(ev.reporter.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(ev.timestamp, buff, offset)
+
+	offset += 4
+
+	/*
+	 * expressed in units of 1/65536 seconds (1/0x10000).
+	 */
+	delay := int(millis(time.Now().Sub(ev.rcvSendTime)))
+
+	delay = millisToFixedPoint32(delay)
+
+	intToByte(delay, buff, offset)
+
+	offset += 4
+
+	intToByte(int(ev.source.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(firstReply, buff, offset)
+
+	offset += 4
+
+	intToByte(int(bitmReply), buff, offset)
+
+	offset += 4
+
+	len := offset - start
+
+	shortToByte(len, buff, start+2)
+
+	p.offset = offset
+}
+
+func (p *Packet) appendNack(ev *lossEvent) {
+	start := p.offset
+
+	buff := p.buff
+	offset := p.offset
+
+	buff[offset] = (byte)((VersionNumber << 6) | NACK_PT)
+	offset++
+	buff[offset] = byte(ev.scope)
+	offset += 3
+
+	intToByte(int(ev.reporter.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(ntp32(nowMillis()), buff, offset)
+
+	offset += 4
+
+	intToByte(int(ev.source.getID()), buff, offset)
+
+	offset += 4
+
+	intToByte(int(ev.low), buff, offset)
+
+	offset += 4
+
+	intToByte(int(ev.bitmask), buff, offset)
+
+	offset += 4
+
+	len := offset - start
+
+	/* fill the length field */
+
+	shortToByte(len, buff, start+2)
+
+	p.offset = offset
+
 }

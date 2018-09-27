@@ -37,6 +37,7 @@ type sender struct {
 	rrInterval      int
 	rrSelectTime    time.Time
 	rrReplies       int
+	lost            bool
 }
 
 func newSender(id uint32, ip net.IP, start int64) *sender {
@@ -63,10 +64,10 @@ func (s *sender) resetWithSeqNo(initialSeqno int64) {
 	s.interval = 64
 	s.transit = 0
 	s.jitter = 0
-	s.lastTimeForData = time.Unix(0, 0)
-	s.srTimestamp = time.Unix(0, 0)
-	s.nextSRTime = time.Unix(0, 0)
-	s.nextRRTime = time.Unix(0, 0)
+	s.lastTimeForData = time.Time{}
+	s.srTimestamp = time.Time{}
+	s.nextSRTime = time.Time{}
+	s.nextRRTime = time.Time{}
 	s.duplicates = 0
 	s.repairs = 0
 	s.drops = 0

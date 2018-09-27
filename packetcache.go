@@ -36,7 +36,7 @@ func (pc *packetCache) getMaxSize() int {
  * adds the given packet to the queue.
  */
 func (pc *packetCache) addPacket(packet *Packet) {
-	i := int(packet.seqno & int64(pc.mask))
+	i := int(packet.seqno) & pc.mask
 	pc.buffer[i] = packet
 }
 
@@ -44,7 +44,7 @@ func (pc *packetCache) addPacket(packet *Packet) {
  * contains the packet.
  */
 func (pc *packetCache) containPacket(seqno int64) bool {
-	i := seqno & int64(pc.mask)
+	i := int(seqno) & pc.mask
 
 	if pc.buffer[i] != nil {
 		return pc.buffer[i].seqno == seqno
@@ -56,7 +56,7 @@ func (pc *packetCache) containPacket(seqno int64) bool {
  * gets the packet corresponding to the given seqno.
  */
 func (pc *packetCache) getPacket(seqno int64) *Packet {
-	i := seqno & int64(pc.mask)
+	i := int(seqno) & pc.mask
 
 	if pc.buffer[i] != nil && pc.buffer[i].seqno == seqno {
 		return pc.buffer[i]
@@ -68,7 +68,7 @@ func (pc *packetCache) getPacket(seqno int64) *Packet {
  * remove the given packet from the queue.
  */
 func (pc *packetCache) removePacket(obj *Packet) {
-	i := obj.seqno & int64(pc.mask)
+	i := int(obj.seqno) & int(pc.mask)
 
 	if pc.buffer[i] != nil && pc.buffer[i].seqno == obj.seqno {
 		pc.buffer[i] = nil
@@ -79,7 +79,7 @@ func (pc *packetCache) removePacket(obj *Packet) {
  * remove the packet with the given seqno from the queue.
  */
 func (pc *packetCache) removeBySeqNo(seqno int64) {
-	i := seqno & int64(pc.mask)
+	i := int(seqno) & pc.mask
 
 	if pc.buffer[i] != nil && pc.buffer[i].seqno == seqno {
 		pc.buffer[i] = nil
@@ -87,7 +87,7 @@ func (pc *packetCache) removeBySeqNo(seqno int64) {
 }
 
 /**
- * remove the packet with the given seqno from the queue.
+ * clear all cached packets
  */
 func (pc *packetCache) clear() {
 	for i := 0; i < len(pc.buffer); i++ {

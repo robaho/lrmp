@@ -1,6 +1,10 @@
 package lrmp
 
-import "time"
+import (
+	"fmt"
+	"strconv"
+	"time"
+)
 
 const (
 	SendNack       = 0
@@ -22,6 +26,15 @@ type lossEvent struct {
 	nackCount   uint
 	domain      *domain
 	timeoutTime time.Time
+}
+
+func (ev *lossEvent) String() string {
+	return fmt.Sprint(ev.reporter, " -> ", ev.source, " : ", ev.low, "/", strconv.FormatUint(uint64(ev.bitmask), 16), "@", ev.scope)
+}
+
+func newLossEvent(e *sender) *lossEvent {
+	le := lossEvent{source: e}
+	return &le
 }
 
 func (ev *lossEvent) computeBitmask() {
@@ -50,8 +63,20 @@ func (ev *lossEvent) computeBitmask() {
 		}
 	}
 }
+func (event *lossEvent) contains(ev *lossEvent) bool {
+	diff := uint32(diff32(ev.low, event.low))
 
-func newLossEvent(e *sender) *lossEvent {
-	le := lossEvent{source: e}
-	return &le
+	if diff == 0 {
+		return (ev.bitmask & ^event.bitmask) == 0
+	} else if diff > 0 {
+		diff = event.bitmask >> (diff - 1)
+
+		if (diff & 0x01) > 0 {
+			diff >>= 1
+
+			return (ev.bitmask & ^diff) == 0
+		}
+	}
+
+	return false
 }

@@ -15,6 +15,8 @@ type msession struct {
 	gaddr   *net.UDPAddr
 }
 
+const DropPackets = false
+
 func newSession(socket *ipv4.PacketConn, impl *impl, gaddr *net.UDPAddr) *msession {
 	s := msession{socket: socket, impl: impl, gaddr: gaddr}
 	return &s
@@ -26,7 +28,7 @@ func (s *msession) start() {
 		for {
 			n, _, addr, err := s.socket.ReadFrom(buffer[:])
 
-			if false && drop() {
+			if DropPackets && drop() {
 				//Logger.trace(this, "drop packet")
 				continue
 			}
@@ -51,7 +53,7 @@ func (s *msession) stop() {
  * sends data to the session using the provided TTL.
  */
 func (s *msession) send(buf []byte, len int, ttl int) {
-	if false && drop() {
+	if DropPackets && drop() {
 		logDebug("drop packet")
 		return
 	}

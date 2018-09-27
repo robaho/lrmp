@@ -31,7 +31,7 @@ type Context struct {
 }
 
 var maxQueueSize = 16
-var timer = newEventManager()
+var timer = newTimerManager()
 
 const (
 	BigDecrease    = 2

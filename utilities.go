@@ -1,6 +1,8 @@
 package lrmp
 
-import "time"
+import (
+	"time"
+)
 
 func byteToInt(buff []byte, offset int) int {
 	var i uint
@@ -82,4 +84,10 @@ func millis(d time.Duration) int64 {
 
 func addMillis(t time.Time, ms int) time.Time {
 	return t.Add(time.Duration(ms) * time.Millisecond)
+}
+
+// simple formatting of time.Time
+
+func times(time time.Time) string {
+	return time.Format("20060102 150405.999")
 }
