@@ -1168,8 +1168,12 @@ final class LrmpImpl extends MulticastSession implements EventHandler {
      * the state changes from sending to idle.
      */
     protected void idle() {
+
+        if (Logger.debug()) {
+            Logger.debug("idle()");
+        }
+
         long now = System.currentTimeMillis();
-        int diff = (int) (cxt.whoami.nextSRTime - now);
         int idleTime = cxt.sndInterval << 4;
 
         if (idleTime < 1000) {
