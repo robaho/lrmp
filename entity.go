@@ -34,7 +34,6 @@ type EntityImpl struct {
 	id            uint32
 
 	// round trip time in millis.
-
 	rtt int
 	// approx number of hops from local site.
 	distance int
