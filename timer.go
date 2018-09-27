@@ -60,6 +60,7 @@ func newTimerManager() *timerManager {
 			case <-time.After(timeout):
 			}
 			em.Lock()
+
 			var task *timerTask
 			if em.tasks.Len() > 0 {
 				task = em.tasks.Front().Value.(*timerTask)
@@ -102,6 +103,9 @@ func (em *timerManager) registerTimer(ms int, handler timerHandler, data interfa
 			break
 		} else if t.time.Before(elem.Value.(*timerTask).time) {
 			em.tasks.InsertBefore(&t, elem)
+			break
+		} else if elem == em.tasks.Back() {
+			em.tasks.PushBack(&t)
 			break
 		}
 	}
