@@ -15,7 +15,8 @@ type msession struct {
 	gaddr   *net.UDPAddr
 }
 
-const DropPackets = false
+// enable the following to test recovery on reliable networks
+const DropPackets = true
 
 func newSession(socket *ipv4.PacketConn, impl *impl, gaddr *net.UDPAddr) *msession {
 	s := msession{socket: socket, impl: impl, gaddr: gaddr}

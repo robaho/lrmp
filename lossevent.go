@@ -80,3 +80,46 @@ func (event *lossEvent) contains(ev *lossEvent) bool {
 
 	return false
 }
+
+// remove lost packets reported by this event
+func (event *lossEvent) remove(ev *lossEvent) {
+	diff := diff32(ev.low, event.low)
+
+	if diff == 0 {
+		event.bitmask &= ^ev.bitmask
+
+		if event.bitmask == 0 {
+			event.low = -1
+		} else {
+			i := uint(1)
+
+			for ; i < 32 && (event.bitmask&0x1) == 0; i++ {
+				event.bitmask >>= 1
+			}
+
+			event.bitmask >>= 1
+			event.low += int64(i)
+		}
+	} else if diff > 0 {
+		event.bitmask &= ^(0x1 << (uint(diff) - 1))
+		event.bitmask &= ^(ev.bitmask << uint(diff))
+	} else {
+		diff = -diff
+		event.bitmask &= ^(ev.bitmask >> uint(diff))
+
+		if (ev.bitmask & (0x1 << (uint(diff) - 1))) > 0 {
+			if event.bitmask == 0 {
+				event.low = -1
+			} else {
+				i := uint(1)
+
+				for ; i < 32 && (event.bitmask&0x1) == 0; i++ {
+					event.bitmask >>= 1
+				}
+
+				event.bitmask >>= 1
+				event.low += int64(i)
+			}
+		}
+	}
+}

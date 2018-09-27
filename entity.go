@@ -129,9 +129,9 @@ func (m *entityManager) lookup(srcId uint32, ip net.IP) Entity {
 				return nil // if the registered is a sender, reject new one
 			}
 
-			silence := time.Now().Sub(s.getLastTimeHeard())
+			silence := millis(time.Now().Sub(s.getLastTimeHeard()))
 
-			if silence < time.Duration(rcvDropTime)*time.Millisecond {
+			if silence < rcvDropTime {
 				return nil
 			}
 
@@ -154,9 +154,9 @@ func (m *entityManager) lookup(srcId uint32, ip net.IP) Entity {
 
 		if e != m.whoami && !isSender {
 			if bytes.Equal(e.getAddress(), ip) {
-				silence := time.Now().Sub(e.getLastTimeHeard())
+				silence := millis(time.Now().Sub(e.getLastTimeHeard()))
 
-				if silence >= time.Duration(rcvDropTime)*time.Millisecond {
+				if silence >= rcvDropTime {
 					m.remove(e)
 					e.setID(srcId)
 					m.add(e)
@@ -190,7 +190,7 @@ func (m *entityManager) remove(e Entity) {
 }
 func (m *entityManager) add(e Entity) {
 	if len(m.entities) > maxSrc {
-		for maxSilence := rcvDropTime; len(m.entities) > maxSrc; {
+		for maxSilence := int64(rcvDropTime); len(m.entities) > maxSrc; {
 			m.prune(maxSilence)
 
 			if maxSilence > 10000 {
@@ -204,15 +204,15 @@ func (m *entityManager) add(e Entity) {
 	m.entities[e.getID()] = e
 }
 
-func (m *entityManager) prune(maxSilence int) {
+func (m *entityManager) prune(maxSilence int64) {
 	now := time.Now()
 
 	for _, e := range m.entities {
 		if e != m.whoami {
-			silence := now.Sub(e.getLastTimeHeard())
-			if silence >= time.Duration(sndDropTime)*time.Millisecond {
+			silence := millis(now.Sub(e.getLastTimeHeard()))
+			if silence >= sndDropTime {
 				delete(m.entities, e.getID())
-			} else if _, isSender := e.(*sender); !isSender && silence >= time.Duration(maxSilence)*time.Millisecond {
+			} else if _, isSender := e.(*sender); !isSender && silence >= maxSilence {
 				delete(m.entities, e.getID())
 			}
 		}

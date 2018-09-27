@@ -29,6 +29,9 @@ func (r *recovery) handleTimerTask(data interface{}, thetime time.Time) {
 		ev = elem.Value.(*lossEvent)
 
 		if ev.timeoutTime.After(thetime) {
+			if isDebug() {
+				logDebug("ignoring event ", ev, " in the future")
+			}
 			continue
 		}
 
@@ -307,7 +310,87 @@ func (r *recovery) processNack(received *lossEvent) {
 	}
 }
 
-func (r *recovery) processNackReply(entity Entity, event *lossEvent, delay int) {
+func (r *recovery) processNackReply(responder Entity, ev *lossEvent, delay int) {
+	dc := r.lookupDomain(ev.scope)
+
+	dc.stats.nackReply++
+
+	/*
+	 * if we are the original sender, nothing to do.
+	 */
+	if r.cxt.whoami == ev.source {
+		return
+	}
+	if isDebug() {
+		logDebug("got R_NACK ", ev)
+	}
+
+	/*
+	 * if the local lost seqno is greater than or equal to the one heard,
+	 * delay the next NACK.
+	 */
+	ev1 := r.lookup(ev.source, r.cxt.whoami)
+
+	if ev1 != nil {
+		if ev1.low >= ev.low {
+			ev1.nextAction = DelayAndStay
+		}
+	}
+
+	/*
+	 * if it is for us, update mean round trip time.
+	 */
+	if ev.reporter == r.cxt.whoami {
+
+		/* NTP offset is subtracted */
+
+		rtt := ntp32(nowMillis()) - ev.timestamp - delay
+
+		rtt = fixedPoint32ToMillis(rtt)
+		responder.setRTT(rtt)
+		dc.updateMRTT(rtt)
+
+		return
+	}
+
+	/*
+	 * unconditionally cancel resend if we have not yet sent reply.
+	 * allow partial repair.
+	 */
+	ev1 = r.lookup(ev.source, ev.reporter)
+
+	if ev1 != nil {
+		ev1.remove(ev)
+
+		if ev1.low < 0 {
+			dc.lossTab.remove(ev1)
+
+			if isDebug() {
+				logDebug("great! cancel resend: ", ev1)
+			}
+		}
+
+		return
+	}
+
+	/*
+	 * conditionally cancel resend (queued) if the local id is higher
+	 * than the responder id.
+	 */
+	rcv := responder.getID() & 0xffffffff
+	me := r.cxt.whoami.getID() & 0xffffffff
+
+	if me > rcv || responder == ev.source {
+		r.cxt.sender.cancelResend(ev.source, ev.low, ev.scope)
+
+		for i := uint(0); i < 32; i++ {
+			if ((ev.bitmask >> i) & 0x01) > 0 {
+				seqno := ev.low + int64(i) + 1
+
+				r.cxt.sender.cancelResend(ev.source, seqno, ev.scope)
+			}
+		}
+	}
 }
 
 /**

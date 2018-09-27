@@ -13,14 +13,36 @@ func newFlow(cxt *Context) *flow {
 	f := flow{cxt: cxt}
 
 	go func() {
+		var didSend bool
 		for {
-			pack := <-f.cxt.sendQueue
+			var pack *Packet
+
+			idleTime := f.cxt.sndInterval / 16
+
+			if idleTime < 1000 {
+				idleTime = 1000
+			} else if idleTime > 4000 {
+				idleTime = 4000
+			}
+
+			select {
+			case pack = <-f.cxt.sendQueue:
+				break
+			case <-time.After(time.Millisecond * time.Duration(idleTime)):
+				if didSend {
+					f.cxt.lrmp.idle()
+					didSend = false
+				}
+				break
+			}
 
 			f.resend() // always check resend
 
 			if pack == nil { // might be wakeup from resend queue
 				continue
 			}
+
+			didSend = true
 
 			/* send a packet */
 
@@ -149,6 +171,7 @@ func (f *flow) flowControl() {
 		logDebug("rate/interval: ", cxt.curRate, "/", cxt.sndInterval)
 	}
 }
+
 func (f *flow) enqueueResend(pack *Packet, scope int) {
 	if f.cxt.resendQueue.contains(pack) {
 		if pack.scope < scope {

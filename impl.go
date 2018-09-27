@@ -144,6 +144,28 @@ func (i *impl) send(pack *Packet) error {
 	return nil
 }
 
+func (i *impl) idle() {
+
+	if isDebug() {
+		logDebug("idle()")
+	}
+
+	now := time.Now()
+	idleTime := i.cxt.sndInterval / 16
+
+	if idleTime < 1000 {
+		idleTime = 1000
+	} else if idleTime > 4000 {
+		idleTime = 4000
+	}
+	if i.event != nil {
+		timer.recallTimer(i.event)
+		i.event = nil
+	}
+	i.cxt.whoami.nextSRTime = addMillis(now, idleTime)
+	i.startTimer(idleTime)
+}
+
 func (i *impl) startTimer(millis int) {
 	t1 := addMillis(time.Now(), millis)
 
@@ -182,7 +204,7 @@ func (i *impl) handleTimerTask(data interface{}, thetime time.Time) {
 	 * send several sender reports when the transmission is stopped.
 	 */
 	if cxt.whoami.expected != cxt.whoami.startseq {
-		if thetime.Sub(cxt.whoami.lastTimeForData) < sndDropTime {
+		if millis(thetime.Sub(cxt.whoami.lastTimeForData)) < sndDropTime {
 			diff := int(millis(cxt.whoami.nextSRTime.Sub(thetime)))
 
 			if diff <= 0 {
