@@ -43,6 +43,8 @@ const (
 
 func newImpl(addr string, port int, ttl int, network string, profile Profile) (*impl, error) {
 
+	rand.Seed(time.Now().UnixNano())
+
 	group, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
@@ -79,8 +81,14 @@ func newImpl(addr string, port int, ttl int, network string, profile Profile) (*
 	}
 
 	socket := ipv4.NewPacketConn(l)
-	socket.SetMulticastInterface(ifi)
-	socket.SetMulticastLoopback(true)
+	err = socket.SetMulticastInterface(ifi)
+	if err != nil {
+		return nil, err
+	}
+	err = socket.SetMulticastLoopback(true)
+	if err != nil {
+		return nil, err
+	}
 
 	cxt := newContext(laddr, ttl)
 
@@ -375,6 +383,9 @@ func (i *impl) parse(buff []byte, totalLen int, ip net.IP) {
 	/* ignore loopback packets */
 
 	if i.cxt.whoami.getID() == id && bytes.Equal(i.cxt.whoami.getAddress(), ip) {
+		if isTrace() {
+			logTrace("ignoring packet from me")
+		}
 		return
 	}
 
