@@ -2,22 +2,25 @@ package lrmp
 
 import (
 	"fmt"
-	"log"
+	"io"
+	"os"
 )
+
+var LogWriter = io.Writer(os.Stderr)
 
 func logDebug(args ...interface{}) {
 	if isDebug() {
-		fmt.Println(args)
+		fmt.Fprintln(LogWriter, args)
 	}
 }
 func isDebug() bool { return true }
 
 func logError(args ...interface{}) {
-	log.Println(args)
+	fmt.Fprintln(LogWriter, args)
 }
 func isTrace() bool { return false }
 func logTrace(args ...interface{}) {
 	if isTrace() {
-		fmt.Println(args)
+		fmt.Fprintln(LogWriter, args)
 	}
 }
