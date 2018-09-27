@@ -116,7 +116,8 @@ func newEntityManager(ip net.IP) *entityManager {
 }
 
 func allocateID() uint32 {
-	return uint32(rand.Int())
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return uint32(r.Int())
 }
 
 func (m *entityManager) lookup(srcId uint32, ip net.IP) Entity {

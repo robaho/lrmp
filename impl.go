@@ -43,8 +43,6 @@ const (
 
 func newImpl(addr string, port int, ttl int, network string, profile Profile) (*impl, error) {
 
-	rand.Seed(time.Now().UnixNano())
-
 	group, err := net.ResolveUDPAddr("udp", addr+":"+strconv.Itoa(port))
 	if err != nil {
 		return nil, err
