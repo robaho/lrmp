@@ -1,7 +1,7 @@
 **About**
 
-Go and Java implementations of LRMP (light weight reliable multicast). Ideally suited for local to medium sized networks
-with one to many and many to many network traffic.
+Go and Java implementations of LRMP (light weight reliable multicast protocol).
+Ideally suited for local to medium sized networks with one to many and many to many network traffic.
 
 **References**
 
